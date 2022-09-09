@@ -136,6 +136,7 @@ struct configuration {
   char *sql_passwd;
   char *sql_conn_ca_file;
   char *sql_host;
+  char *zmq_address;
   int sql_port;
   char *sql_data;
   char *sql_backup_host;
@@ -534,7 +535,8 @@ struct configuration {
   int daemon;
   int active_plugins;
   char *logfile; 
-  FILE *logfile_fd; 
+  int loglevel;
+  FILE *logfile_fd;
   char *pidfile; 
   int networks_mask;
   char *networks_file;

@@ -138,6 +138,18 @@ int cfg_key_logfile(char *filename, char *name, char *value_ptr)
   return changes;
 }
 
+int cfg_key_logLevel(char *filename, char *name, char *value_ptr)
+{
+  struct plugins_list_entry *list = plugins_list;
+  int changes = 0;
+
+  for (; list; list = list->next, changes++) list->cfg.loglevel = atoi(value_ptr);
+
+  if (name) Log(LOG_WARNING, "WARN: [%s] plugin name not supported for key 'loglevel'. Globalized.\n", filename);
+
+  return changes;
+}
+
 int cfg_key_pidfile(char *filename, char *name, char *value_ptr)
 {
   struct plugins_list_entry *list = plugins_list;
@@ -1441,6 +1453,25 @@ int cfg_key_sql_host(char *filename, char *name, char *value_ptr)
     for (; list; list = list->next) {
       if (!strcmp(name, list->name)) {
         list->cfg.sql_host = value_ptr;
+        changes++;
+        break;
+      }
+    }
+  }
+
+  return changes;
+}
+
+int cfg_key_zmq_address(char *filename, char *name, char *value_ptr)
+{
+  struct plugins_list_entry *list = plugins_list;
+  int changes = 0;
+
+  if (!name) for (; list; list = list->next, changes++) list->cfg.zmq_address = value_ptr;
+  else {
+    for (; list; list = list->next) {
+      if (!strcmp(name, list->name)) {
+        list->cfg.zmq_address = value_ptr;
         changes++;
         break;
       }
