@@ -735,7 +735,8 @@ int Tee_prepare_sock(struct sockaddr *addr, socklen_t len, char *src_ip, u_int16
 
 
 #if defined BSD
-    setsockopt(s, IPPROTO_IP, IP_HDRINCL, &hincl, (socklen_t) sizeof(hincl));
+    //todo: https://github.com/pmacct/pmacct/issues/637
+//    setsockopt(s, IPPROTO_IP, IP_HDRINCL, &hincl, (socklen_t) sizeof(hincl));
 #endif
   }
 
