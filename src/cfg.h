@@ -249,6 +249,7 @@ struct configuration {
   char *sfacctd_counter_kafka_config_file;
   int nfacctd_disable_checks;
   int nfacctd_disable_opt_scope_check;
+  int nfacctd_ignore_exporter_address;
   int telemetry_daemon;
   int telemetry_sock;
   int telemetry_port_tcp;
@@ -631,6 +632,7 @@ struct configuration {
   int tmp_bgp_daemon_origin_type_int;
   int tmp_telemetry_udp_notif_legacy;
   int tmp_telemetry_decode_cisco_v1_json_string;
+  int tmp_bmp_daemon_ha;
   size_t thread_stack;
   char *rpki_roas_file;
   char *rpki_rtr_cache;

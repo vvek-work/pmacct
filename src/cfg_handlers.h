@@ -167,6 +167,7 @@ extern int cfg_key_nfacctd_as_new(char *, char *, char *);
 extern int cfg_key_nfacctd_net(char *, char *, char *);
 extern int cfg_key_nfacctd_disable_checks(char *, char *, char *);
 extern int cfg_key_nfacctd_disable_opt_scope_check(char *, char *, char *);
+extern int cfg_key_nfacctd_ignore_exporter_address(char *, char *, char *);
 extern int cfg_key_nfacctd_mcast_groups(char *, char *, char *);
 extern int cfg_key_nfacctd_pipe_size(char *, char *, char *);
 extern int cfg_key_nfacctd_pro_rating(char *, char *, char *);
@@ -532,6 +533,7 @@ extern int cfg_key_tmp_bgp_daemon_route_refresh(char *, char *, char *);
 extern int cfg_key_tmp_bgp_daemon_origin_type_int(char *, char *, char *);
 extern int cfg_key_tmp_telemetry_daemon_udp_notif_legacy(char *, char *, char *);
 extern int cfg_key_tmp_telemetry_decode_cisco_v1_json_string(char *, char *, char *);
+extern int cfg_key_tmp_bmp_daemon_ha(char *, char *, char *);
 
 extern void parse_time(char *, char *, int *, int *);
 extern void cfg_get_primitive_index_value(u_int64_t, u_int64_t *, u_int64_t *);

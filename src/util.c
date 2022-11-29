@@ -21,6 +21,7 @@
 
 /* includes */
 #include "pmacct.h"
+#include "pmacct-build.h"
 #include "util-data.h"
 #ifdef WITH_KAFKA
 #include "kafka_common.h"
@@ -374,7 +375,7 @@ time_t roundoff_time(time_t t, char *value)
       else if (value[j] == 'w') {
         rounded->tm_min = 0;
         rounded->tm_hour = 0;
-	while (rounded->tm_wday > 1) {
+	while (rounded->tm_wday >= 1) {
 	  rounded->tm_mday--;
 	  rounded->tm_wday--;
 	}

@@ -351,6 +351,7 @@ int cfg_key_aggregate(char *filename, char *name, char *value_ptr)
     else if (!strcmp(count_token, "mpls_label_stack")) cfg_set_aggregate(filename, value, COUNT_INT_MPLS_LABEL_STACK, count_token);
     else if (!strcmp(count_token, "mpls_label_top")) cfg_set_aggregate(filename, value, COUNT_INT_MPLS_LABEL_TOP, count_token);
     else if (!strcmp(count_token, "mpls_label_bottom")) cfg_set_aggregate(filename, value, COUNT_INT_MPLS_LABEL_BOTTOM, count_token);
+    else if (!strcmp(count_token, "srv6_seg_ipv6_list")) cfg_set_aggregate(filename, value, COUNT_INT_SRV6_SEG_IPV6_SECTION, count_token);
     else if (!strcmp(count_token, "label")) cfg_set_aggregate(filename, value, COUNT_INT_LABEL, count_token);
     else if (!strcmp(count_token, "export_proto_seqno")) cfg_set_aggregate(filename, value, COUNT_INT_EXPORT_PROTO_SEQNO, count_token);
     else if (!strcmp(count_token, "export_proto_version")) cfg_set_aggregate(filename, value, COUNT_INT_EXPORT_PROTO_VERSION, count_token);
@@ -5860,6 +5861,20 @@ int cfg_key_nfacctd_disable_opt_scope_check(char *filename, char *name, char *va
   return changes;
 }
 
+int cfg_key_nfacctd_ignore_exporter_address(char *filename, char *name, char *value_ptr)
+{
+  struct plugins_list_entry *list = plugins_list;
+  int value, changes = 0;
+
+  value = parse_truefalse_nonzero(value_ptr);
+  if (value == ERR) return ERR;
+
+  for (; list; list = list->next, changes++) list->cfg.nfacctd_ignore_exporter_address = value;
+  if (name) Log(LOG_WARNING, "WARN: [%s] plugin name not supported for key 'nfacctd_ignore_exporter_address'. Globalized.\n", filename);
+
+  return changes;
+}
+
 int cfg_key_classifier_ndpi_num_roots(char *filename, char *name, char *value_ptr)
 {
   struct plugins_list_entry *list = plugins_list;
@@ -7819,6 +7834,20 @@ int cfg_key_tmp_telemetry_decode_cisco_v1_json_string(char *filename, char *name
 
   for (; list; list = list->next, changes++) list->cfg.tmp_telemetry_decode_cisco_v1_json_string = value;
   if (name) Log(LOG_WARNING, "WARN: [%s] plugin name not supported for key 'tmp_telemetry_decode_cisco_v1_json_string'. Globalized.\n", filename);
+
+  return changes;
+}
+
+int cfg_key_tmp_bmp_daemon_ha(char *filename, char *name, char *value_ptr)
+{
+  struct plugins_list_entry *list = plugins_list;
+  int value, changes = 0;
+
+  value = parse_truefalse(value_ptr);
+  if (value < 0) return ERR;
+
+  for (; list; list = list->next, changes++) list->cfg.tmp_bmp_daemon_ha = value;
+  if (name) Log(LOG_WARNING, "WARN: [%s] plugin name not supported for key 'tmp_bmp_daemon_ha'. Globalized.\n", filename);
 
   return changes;
 }
