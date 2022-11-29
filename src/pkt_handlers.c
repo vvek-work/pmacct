@@ -895,6 +895,19 @@ void evaluate_packet_handlers()
       primitives++;
     }
 
+    if (channels_list[index].aggregation_2 & COUNT_SRV6_SEG_IPV6_SECTION) {
+      if (config.acct_type == ACCT_PM) {
+	warn_unsupported_packet_handler(COUNT_INT_SRV6_SEG_IPV6_SECTION, ACCT_PM);
+	primitives--;
+      }
+      else if (config.acct_type == ACCT_NF) channels_list[index].phandler[primitives] = NF_srv6_segment_ipv6_list;
+      else if (config.acct_type == ACCT_SF) {
+	warn_unsupported_packet_handler(COUNT_INT_SRV6_SEG_IPV6_SECTION, ACCT_SF);
+	primitives--;
+      }
+      primitives++;
+    }
+
     if (channels_list[index].aggregation_2 & COUNT_TIMESTAMP_START) {
       if (config.acct_type == ACCT_PM) channels_list[index].phandler[primitives] = timestamp_start_handler; // XXX: to be removed
       else if (config.acct_type == ACCT_NF) channels_list[index].phandler[primitives] = NF_timestamp_start_handler;
@@ -2432,13 +2445,11 @@ void NF_peer_dst_as_handler(struct channels_list_entry *chptr, struct packet_ptr
 void NF_peer_src_ip_handler(struct channels_list_entry *chptr, struct packet_ptrs *pptrs, char **data)
 {
   struct xflow_status_entry *entry = (struct xflow_status_entry *) pptrs->f_status;
-  struct struct_header_v5 *hdr = (struct struct_header_v5 *) pptrs->f_header;
-  struct template_cache_entry *tpl = (struct template_cache_entry *) pptrs->f_tpl;
   struct pkt_bgp_primitives *pbgp = (struct pkt_bgp_primitives *) ((*data) + chptr->extras.off_pkt_bgp_primitives);
   struct sockaddr *sa = (struct sockaddr *) pptrs->f_agent;
 
   /* 1) NF9_EXPORTER_IPV[46]_ADDRESS from NetFlow v9/IPFIX options */
-  if (entry->exp_addr.family) {
+  if (entry->exp_addr.family && !config.nfacctd_ignore_exporter_address) {
     memcpy(&pbgp->peer_src_ip, &entry->exp_addr, sizeof(struct host_addr));
   }
   /* 2) Socket IP address */
@@ -2450,29 +2461,6 @@ void NF_peer_src_ip_handler(struct channels_list_entry *chptr, struct packet_ptr
     else if (sa->sa_family == AF_INET6) {
       memcpy(&pbgp->peer_src_ip.address.ipv6, &((struct sockaddr_in6 *)sa)->sin6_addr, IP6AddrSz);
       pbgp->peer_src_ip.family = AF_INET6;
-    }
-  }
-
-  /* 3) NetFlow v9/IPFIX inline NF9_EXPORTER_IPV[46]_ADDRESS */
-  if (!pbgp->peer_src_ip.family) {
-    int got_ipv4 = FALSE;
-
-    switch (hdr->version) {
-    case 10:
-    case 9:
-      if (tpl->tpl[NF9_EXPORTER_IPV4_ADDRESS].len) {
-	memcpy(&pbgp->peer_src_ip.address.ipv4, pptrs->f_data+tpl->tpl[NF9_EXPORTER_IPV4_ADDRESS].off, MIN(tpl->tpl[NF9_EXPORTER_IPV4_ADDRESS].len, 4));
-	pbgp->peer_src_ip.family = AF_INET;
-
-	if (!is_any(&pbgp->peer_src_ip)) {
-	  got_ipv4 = TRUE;
-	}
-      }
-
-      if (!got_ipv4 && tpl->tpl[NF9_EXPORTER_IPV6_ADDRESS].len) {
-	memcpy(&pbgp->peer_src_ip.address.ipv6, pptrs->f_data+tpl->tpl[NF9_EXPORTER_IPV6_ADDRESS].off, MIN(tpl->tpl[NF9_EXPORTER_IPV6_ADDRESS].len, 16));
-	pbgp->peer_src_ip.family = AF_INET6;
-      }
     }
   }
 }
@@ -2852,7 +2840,7 @@ void NF_time_msecs_handler(struct channels_list_entry *chptr, struct packet_ptrs
     if (tpl->tpl[NF9_FIRST_SWITCHED].len && hdr->version == 9) {
       memcpy(&fstime, pptrs->f_data+tpl->tpl[NF9_FIRST_SWITCHED].off, tpl->tpl[NF9_FIRST_SWITCHED].len);
       pdata->time_start.tv_sec = ntohl(((struct struct_header_v9 *) pptrs->f_header)->unix_secs)-
-        ((ntohl(((struct struct_header_v9 *) pptrs->f_header)->SysUptime)-ntohl(fstime))/1000);
+        ((int32_t)(ntohl(((struct struct_header_v9 *) pptrs->f_header)->SysUptime)-ntohl(fstime))/1000);
 
       if (config.debug) {
 	if (ntohl(((struct struct_header_v9 *) pptrs->f_header)->SysUptime) < ntohl(fstime)) {
@@ -2933,7 +2921,7 @@ void NF_time_msecs_handler(struct channels_list_entry *chptr, struct packet_ptrs
     if (tpl->tpl[NF9_LAST_SWITCHED].len && hdr->version == 9) {
       memcpy(&fstime, pptrs->f_data+tpl->tpl[NF9_LAST_SWITCHED].off, tpl->tpl[NF9_LAST_SWITCHED].len);
       pdata->time_end.tv_sec = ntohl(((struct struct_header_v9 *) pptrs->f_header)->unix_secs)-
-        ((ntohl(((struct struct_header_v9 *) pptrs->f_header)->SysUptime)-ntohl(fstime))/1000);
+        ((int32_t)(ntohl(((struct struct_header_v9 *) pptrs->f_header)->SysUptime)-ntohl(fstime))/1000);
 
       if (config.debug) {
 	if (ntohl(((struct struct_header_v9 *) pptrs->f_header)->SysUptime) < ntohl(fstime)) {
@@ -3023,7 +3011,7 @@ void NF_time_secs_handler(struct channels_list_entry *chptr, struct packet_ptrs 
   case 9:
     memcpy(&fstime, pptrs->f_data+tpl->tpl[NF9_FIRST_SWITCHED].off, tpl->tpl[NF9_FIRST_SWITCHED].len);
     pdata->time_start.tv_sec = ntohl(((struct struct_header_v9 *) pptrs->f_header)->unix_secs)-
-      (ntohl(((struct struct_header_v9 *) pptrs->f_header)->SysUptime)-ntohl(fstime));
+      (int32_t)(ntohl(((struct struct_header_v9 *) pptrs->f_header)->SysUptime)-ntohl(fstime));
 
     if (config.debug) {
       if (ntohl(((struct struct_header_v9 *) pptrs->f_header)->SysUptime) < ntohl(fstime)) {
@@ -3034,7 +3022,7 @@ void NF_time_secs_handler(struct channels_list_entry *chptr, struct packet_ptrs 
 
     memcpy(&fstime, pptrs->f_data+tpl->tpl[NF9_LAST_SWITCHED].off, tpl->tpl[NF9_LAST_SWITCHED].len);
     pdata->time_end.tv_sec = ntohl(((struct struct_header_v9 *) pptrs->f_header)->unix_secs)-
-      (ntohl(((struct struct_header_v9 *) pptrs->f_header)->SysUptime)-ntohl(fstime));
+      (int32_t)(ntohl(((struct struct_header_v9 *) pptrs->f_header)->SysUptime)-ntohl(fstime));
 
     if (config.debug) {
       if (ntohl(((struct struct_header_v9 *) pptrs->f_header)->SysUptime) < ntohl(fstime)) {
@@ -3348,7 +3336,7 @@ void NF_timestamp_start_handler(struct channels_list_entry *chptr, struct packet
     if (tpl->tpl[NF9_FIRST_SWITCHED].len && hdr->version == 9) {
       memcpy(&fstime, pptrs->f_data+tpl->tpl[NF9_FIRST_SWITCHED].off, tpl->tpl[NF9_FIRST_SWITCHED].len);
       pnat->timestamp_start.tv_sec = ntohl(((struct struct_header_v9 *) pptrs->f_header)->unix_secs)-
-        ((ntohl(((struct struct_header_v9 *) pptrs->f_header)->SysUptime)-ntohl(fstime))/1000);
+        ((int32_t)(ntohl(((struct struct_header_v9 *) pptrs->f_header)->SysUptime)-ntohl(fstime))/1000);
     }
     else if (tpl->tpl[NF9_FIRST_SWITCHED].len && hdr->version == 10) {
       if (tpl->tpl[NF9_SYS_UPTIME_MSEC].len == 8) {
@@ -3447,7 +3435,7 @@ void NF_timestamp_end_handler(struct channels_list_entry *chptr, struct packet_p
     if (tpl->tpl[NF9_LAST_SWITCHED].len && hdr->version == 9) {
       memcpy(&fstime, pptrs->f_data+tpl->tpl[NF9_LAST_SWITCHED].off, tpl->tpl[NF9_LAST_SWITCHED].len);
       pnat->timestamp_end.tv_sec = ntohl(((struct struct_header_v9 *) pptrs->f_header)->unix_secs)-
-        ((ntohl(((struct struct_header_v9 *) pptrs->f_header)->SysUptime)-ntohl(fstime))/1000);
+        ((int32_t)(ntohl(((struct struct_header_v9 *) pptrs->f_header)->SysUptime)-ntohl(fstime))/1000);
     }
     else if (tpl->tpl[NF9_LAST_SWITCHED].len && hdr->version == 10) {
       if (tpl->tpl[NF9_SYS_UPTIME_MSEC].len == 8) {
@@ -3940,6 +3928,46 @@ void NF_mpls_label_bottom_handler(struct channels_list_entry *chptr, struct pack
     break;
   default:
     break;
+  }
+}
+
+void NF_srv6_segment_ipv6_list(struct channels_list_entry *chptr, struct packet_ptrs *pptrs, char **data)
+{
+  struct struct_header_v5 *hdr = (struct struct_header_v5 *) pptrs->f_header;
+  struct template_cache_entry *tpl = (struct template_cache_entry *) pptrs->f_tpl;
+  struct pkt_vlen_hdr_primitives *pvlen = (struct pkt_vlen_hdr_primitives *) ((*data) + chptr->extras.off_pkt_vlen_hdr_primitives);
+  struct host_addr srv6_segment_ipv6_list[MAX_SRV6_SEGMENT_IPV6_LIST_ENTRIES];
+  u_int8_t list_off = 0, list_len = 0, list_elems = 0, list_idx = 0;
+  struct utpl_field *utpl = NULL;
+
+  memset(&srv6_segment_ipv6_list, 0, sizeof(srv6_segment_ipv6_list));
+
+  switch(hdr->version) {
+  case 10:
+  case 9:
+    if ((utpl = (*get_ext_db_ie_by_type)(tpl, 0, NF9_srhSegmentIPv6ListSection, FALSE)) ||
+	(utpl = (*get_ext_db_ie_by_type)(tpl, HUAWEI_PEN, NF9_srhSegmentIPv6ListSection, FALSE))) {
+      list_len = utpl->len;
+
+      if (list_len && !(list_len % 16 /* IPv6 Address length */)) {
+	for (list_off = 0, list_idx = 0, list_elems = list_len / 16; list_idx < list_elems; list_off += 16, list_idx++) {
+	  srv6_segment_ipv6_list[list_idx].family = AF_INET6;
+	  memcpy(&srv6_segment_ipv6_list[list_idx].address.ipv6, (pptrs->f_data + utpl->off + list_off), 16);
+	}
+      }
+    }
+    break;
+  default:
+    break;
+  }
+
+  if (check_pipe_buffer_space(chptr, pvlen, PmLabelTSz + list_len)) {
+    vlen_prims_init(pvlen, 0);
+    return;
+  }
+  else {
+    list_len = sizeof(struct host_addr) * list_elems;
+    vlen_prims_insert(pvlen, COUNT_INT_SRV6_SEG_IPV6_SECTION, list_len, (u_char *) &srv6_segment_ipv6_list, PM_MSG_BIN_COPY);
   }
 }
 

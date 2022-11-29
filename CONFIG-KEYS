@@ -61,7 +61,8 @@ VALUES:		[ src_mac, dst_mac, vlan, in_vlan, out_vlan, cos, etype, src_host, dst_
 		 tunnel_dst_mac, tunnel_src_host, tunnel_dst_host, tunnel_proto, tunnel_tos,
 		 tunnel_src_port, tunnel_dst_port, tunnel_tcpflags, fwd_status, vxlan,
 		 timestamp_start, timestamp_end, timestamp_arrival, timestamp_export,
-		 export_proto_seqno, export_proto_version, export_proto_sysid ]
+		 export_proto_seqno, export_proto_version, export_proto_sysid,
+		 srv6_seg_ipv6_list ]
 FOREWORDS:	Individual IP packets are uniquely identified by their header field values (a
 		rather large set of primitives!). Same applies to uni-directional IP flows, as
 		they have at least enough information to discriminate where packets are coming
@@ -147,6 +148,8 @@ NOTES:		* List of the aggregation primitives available to each specific pmacct d
 		  of the first case checked reporting a non-zero ID (ingress > egress); more
 		  intuitively, in_vlan reports ingress VLAN ID if any and out_vlan reports
 		  egress VLAN ID if any.
+		* srv6_seg_ipv6_list primitive is only available if using an encoding, like
+		  JSON or Avro, that supports complex data (ie. arrays, maps, etc.). 
 DEFAULT:	src_host
 
 KEY:		aggregate_primitives [GLOBAL, MAP]
@@ -459,18 +462,21 @@ DEFAULT:	false
 
 KEY:		pcap_savefile (-I) [GLOBAL, NO_UACCTD, NO_PMBGPD]
 DESC:		File in libpcap savefile format to read data from (as an alternative to live data
-		collection). As soon as the daemon finished processing the file, it exits (unless in
-		pmacctd the 'pcap_savefile_wait' config directive is specified). The directive is
-		mutually exclusive with reading live traffic (ie. pcap_interface (-i) for pmacctd,
-		[ns]facctd_ip (-L) and [ns]facctd_port (-l) for nfacctd and sfacctd respectively,
-		bmp_daemon_ip for pmbmpd). If using a traffic daemon (ie. nfacctd) with a BMP thread
-		(ie. bmp_daemon: true) and wanting to feed both with a savefile, only one file can
-		be supplied (that is, only a single pcap_savefile can be specified in the config):
-		if having multiple files, ie. one with traffic data and one with BMP data, these
-		can be merged using, for example, Wireshark which offers options to prepend, merge
-		chronologically and append data. Note: reading libpcap savefiles does use the
-		cap_next_ex() call which seems not to be highly portable, ie. a capture produced on
-		a Linux does not always read on a MacOS.  
+		collection). As soon as the daemon processed the file, it exits (unless, in pmacctd,
+		'pcap_savefile_wait' is specified). The directive is mutually exclusive with reading
+		live traffic (ie. pcap_interface (-i) for pmacctd, [ns]facctd_ip (-L) and
+		[ns]facctd_port (-l) for nfacctd and sfacctd respectively, bmp_daemon_ip for pmbmpd).
+		If using a traffic daemon (ie. nfacctd) with a BMP thread (ie. bmp_daemon: true) and
+		wanting to feed both with a savefile, only one file can be supplied (that is, only a
+		single pcap_savefile can be specified in the config): if having multiple files, ie.
+		one with traffic data and one with BMP data, these can be merged using, for example,
+		Wireshark which offers options to prepend, merge chronologically and append data.
+		Note: reading libpcap savefiles does use the cap_next_ex() call which seems not to be
+		highly portable, ie. a capture produced on a Linux does not always read on a MacOS.  
+		Note: when using home-grown buffering (ie. not ZeroMQ), usleep() calls are placed
+		upon wrapping-up one buffer and starting up a new one. This may lead to under using
+		CPU and not the quickest processing experience; if a fastest rate is wanted, switch
+		buffering to ZeroMQ ('plugin_pipe_zmq: true'). 
 DEFAULT:	none
 
 KEY:            pcap_savefile_wait (-W) [GLOBAL, NO_UACCTD, NO_PMBGPD]
@@ -1363,7 +1369,7 @@ DESC:		Enables alignment of minutes (m), hours (h), days of month (d), weeks (w)
 		start at 7:00pm, 8:00pm, etc. Now, you go with 'sql_history: 5m', 'sql_history_roundoff: m'
 		and it's 6:37pm. Rounding off minutes will result in a first slot starting at 6:35pm; next
 		slot will start at 6:40pm, and then every 5 minutes (6:45pm ... 7:00pm, etc.). 'w' and 'd'
-		are mutually exclusive, that is: you can either reset the date to last Monday or reset the
+		are mutually exclusive, that is: you can either reset the date to last Sunday or reset the
 		date to the first day of the month. 
 DEFAULT:	none
 
@@ -1473,7 +1479,8 @@ DESC:		Defines the executable to be launched at fixed time intervals to post-pro
 		A number of environment variables are set in order to allow the trigger to take actions and 
 		are listed in docs/TRIGGER_VARS. Non-SQL plugins feature a simpler implementation: triggers
 		can only be fired each time data is written to the backend (ie. print_refresh_time) and no
-		environment variables are passed over to the executable.
+		environment variables are passed over to the executable; useful also to upload data to cloud
+		storage that supports upload via API end-points. 
 DEFAULT:	none
 
 KEY:		sql_trigger_time
@@ -1817,7 +1824,7 @@ DESC:		Defines the UDP port where to bind nfacctd (nfacctd_port) and sfacctd (sf
 		so with incoming NetFlow v9/IPFIX template-based protocols, nfacctd_templates_receiver and
 		nfacctd_templates_port should be used. At the end of this document, reference (1) to a
 		URL to a presentation of the SO_REUSEPORT feature. To enable SO_REUSEPORT on a Linux system
-		supporting it 'sysctl net.core.allow_reuseport=1'.
+		supporting it 'sysctl net.core.allow_reuseport=1'. 
 DEFAULT:	nfacctd_port: 2100; sfacctd_port: 6343 
 
 KEY:		[ nfacctd_ip | sfacctd_ip ] (-L) [GLOBAL, NO_PMACCTD, NO_UACCTD]
@@ -2050,6 +2057,15 @@ VALUES:         [ true | false ]
 DESC:		Mainly a workaround to implementations not encoding NetFlow v9/IPIFX option scope correctly,
 		this knob allows to disable option scope checking. By doing so, options are considered scoped
 		to the system level (ie. to the IP address of the expoter).
+DEFAULT:	false
+
+KEY:		nfacctd_ignore_exporter_address [GLOBAL, ONLY_NFACCTD]
+VALUES:         [ true | false ]
+DESC:		Some IPFIX implementations do send IE #130 (exporterIPv4Address) and/or IE #131
+		(exporterIPv4Address) via Options packets, very convenient per se and especially in
+		case of NAT between the exporter and the collector. This knob is to ignore the IE and
+		honour instead the socket address and was introduced in order to counter some flawed
+		implementations. 
 DEFAULT:	false
 
 KEY:		pre_tag_map [MAP]
@@ -2493,7 +2509,9 @@ DEFAULT:        false
 
 KEY:            [ bgp_daemon_interface | bmp_daemon_interface ] [GLOBAL]
 DESC:           Defines the interface for the BGP / BMP daemon to listen on. This makes it possible to have
-		the session happen entirely in one VRF by specifying the VRF device name here.
+		the session happen entirely in one VRF by specifying the VRF device name here. If having to
+		listen on an IPv6 address inside the VRF, this has to be specified via the relevant config
+		directive, ie. bgp_daemon_ip, as not doing so prevents the daemon to correctly receive data.
 DEFAULT:        none
 
 KEY:            bgp_daemon_id [GLOBAL]
@@ -2511,13 +2529,16 @@ DESC:           Defines the BGP Local AS to the supplied value. By default, no v
 DEFAULT:        none
 
 KEY:		[ bgp_daemon_port | bmp_daemon_port ] [GLOBAL] 
-DESC:		Makes the BGP/BMP daemon listen to a port different from the standard port. Default port for
-		BGP is 179/tcp; default port for BMP is 1790. On systems where SO_REUSEPORT feature is
-		available: it allows multiple daemons to bind the same local address and port in order to
-		load-balance processing of incoming packets. This is best combined with a list of allowed
-		IP addresses, ie. bgp_daemon_allow_file, to explicitely wire peers to collectors. At the
-		end of this document, reference (1) to a URL to a presentation of the SO_REUSEPORT feature.
-		To enable SO_REUSEPORT on a Linux system supporting it 'sysctl net.core.allow_reuseport=1'.
+DESC:		Makes the BGP/BMP daemon listen to a port different from the standard port. Default port
+		for BGP is 179/tcp; default port for BMP is 1790. On systems where SO_REUSEPORT feature
+		is available: it allows multiple daemons to bind the same local address and port in order
+		to load-balance processing of incoming packets. For the sake of TCP sessions balancing,
+		one option is to define a list of allowed IP addresses, ie. bgp_daemon_allow_file, to
+		associate peers to collectors via a hit-and-miss mechanism that may take time to converge;
+		a second option is to define an eBPF load-balancer, ie. bgp_daemon_rp_ebpf_prog, to
+		explicitely wire peers to collectors. At the end of this document, reference (1) to a URL
+		to a presentation of the SO_REUSEPORT feature. To enable SO_REUSEPORT on a Linux system
+		supporting it 'sysctl net.core.allow_reuseport=1'.
 DEFAULT:	bgp_daemon_port: 179; bmp_daemon_port: 1790
 
 KEY:		[ bgp_daemon_rp_ebpf_prog | bmp_daemon_rp_ebpf_prog ] [GLOBAL]
@@ -3227,13 +3248,6 @@ DESC:		Enables the Streaming Telemetry thread in all daemons except pmtelemetryd
 		collaborative manner.".
 DEFAULT:        false
 
-KEY:		telemetry_daemon_port_tcp [GLOBAL]
-DESC:		Makes the Streaming Telemetry daemon, pmtelemetryd, or the Streaming Telemetry thread
-		listen on the specified TCP port. (see telemetry/README.telemetry for gRPC support).
-		If SO_REUSEPORT is supported by the Operating System, you can read more about it at
-		the config key telemetry_daemon_port_udp.
-DEFAULT:	none
-
 KEY:            telemetry_daemon_port_udp [GLOBAL]
 DESC:           Makes the Streaming Telemetry daemon, pmtelemetryd, or the Streaming Telemetry thread
 		listen on the specified UDP port. On systems where SO_REUSEPORT feature is available:
@@ -3244,6 +3258,15 @@ DESC:           Makes the Streaming Telemetry daemon, pmtelemetryd, or the Strea
 		To enable SO_REUSEPORT on a Linux system supporting it 'sysctl net.core.allow_reuseport=1'. 
 DEFAULT:        none
 
+KEY:		telemetry_daemon_port_tcp [GLOBAL]
+DESC:		Makes the Streaming Telemetry daemon, pmtelemetryd, or the Streaming Telemetry thread
+		listen on the specified TCP port. (see telemetry/README.telemetry for gRPC support).
+		If SO_REUSEPORT is supported by the Operating System, you can read more about it at
+		the config key telemetry_daemon_port_udp. Alternstively, for the sake of TCP sessions
+		balancing, a eBPF load-balancer, ie. telemetry_daemon_rp_ebpf_prog, can be defined in
+		order to explicitely wire peers to collectors.
+DEFAULT:	none
+
 KEY:		telemetry_daemon_ip [GLOBAL]
 DESC:		Binds the Streaming Telemetry daemon to a specific interface. Expects as value an IPv4/
 		IPv6 address.
@@ -3252,7 +3275,9 @@ DEFAULT:        0.0.0.0
 KEY:            telemetry_daemon_interface [GLOBAL]
 DESC:           Defines the interface for the Streaming Telemetry daemon to listen on. This makes it
 		possible to have the session happen entirely in one VRF by specifying the VRF device
-		name here.
+		name here. If having to listen on an IPv6 address inside the VRF, this has to be
+		specified via the relevant config directive, ie. telemetry_daemon_ip, as not doing
+		so prevents the daemon to correctly receive data.
 DEFAULT:        none
 
 KEY:		telemetry_daemon_ipv6_only [GLOBAL]
@@ -3353,7 +3378,9 @@ DEFAULT:	none
 KEY:		telemetry_daemon_udp_notif_interface [GLOBAL]
 DESC:		Defines the interface for the Streaming Telemetry daemon to listen on for UDP-Notif.
 		This makes it possible to have the session happen entirely in one VRF by specifying
-		the VRF device name here.
+		the VRF device name here. If having to listen on an IPv6 address inside the VRF,
+		this has to be specified via the relevant config directive, ie. telemetry_daemon_
+		udp_notif_ip, as not doing so prevents the daemon to correctly receive data.
 DEFAULT:	none
 
 KEY:		telemetry_daemon_udp_notif_ipv6_only [GLOBAL]

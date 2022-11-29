@@ -1,4 +1,4 @@
-/*  
+/*
     pmacct (Promiscuous mode IP Accounting package)
     pmacct is Copyright (C) 2003-2022 by Paolo Lucente
 */
@@ -19,9 +19,24 @@
     Foundation, Inc., 59 Temple Place - Suite 330, Boston, MA 02111-1307, USA.
 */
 
-#ifndef _PMACCT_VERSION_H_
-#define _PMACCT_VERSION_H_
+#ifndef HA_H
+#define HA_H
 
-#define PMACCT_VERSION	"@PMACCT_VERSION@"
+/*Global variables*/
+typedef void (*queue_thread_handler)();
 
-#endif /* _PMACCT_VERSION_H_ */
+// A linked list (LL) node to store a queue entry
+typedef struct QNode
+{
+    void *key; //Data
+    size_t key_len; //Data length
+    long long timestamp;
+}nodestruct;
+
+/*Functions*/
+extern void pm_ha_countdown_delete();
+extern void pm_ha_queue_thread_wrapper();
+extern int pm_ha_queue_produce_thread(void *);
+extern void enQueue(cdada_queue_t*, void *, size_t);
+
+#endif //HA_H

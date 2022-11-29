@@ -117,6 +117,9 @@ struct data_hdr_v9 {
 
 #define IPFIX_TPL_EBIT                  0x8000 /* IPFIX telmplate enterprise bit */
 #define IPFIX_VARIABLE_LENGTH           65535
+
+/* PENs */
+#define HUAWEI_PEN			2011
 #define PMACCT_PEN                      43874
 
 /* NetFlow V9 stuff */
@@ -262,6 +265,8 @@ struct data_hdr_v9 {
 #define NF9_LAYER2OCTETDELTACOUNT	352
 /* ... */
 #define NF9_DATALINK_FRAME_TYPE		408
+/* ... */
+#define NF9_srhSegmentIPv6ListSection	505
 /* ... */
 #define NF9_ASA_XLATE_IPV4_SRC_ADDR	40001
 #define NF9_ASA_XLATE_IPV4_DST_ADDR	40002
