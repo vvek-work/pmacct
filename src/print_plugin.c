@@ -1336,11 +1336,14 @@ void P_cache_purge(struct chained_cache *queue[], int index, int safe_action)
 
         if (json)
         {
-            char *buffer = malloc(sizeof(char) * (strlen(json) + 5));
-            strcpy(buffer, "flow ");
-            strcat(buffer, json);
-            zmq_send (requester, buffer, strlen(buffer), ZMQ_NOBLOCK);
-            free(buffer);
+            char *buffer;
+            asprintf(&buffer, "flow %s", json);
+            free(json);
+            if (buffer)
+            {
+                zmq_send(requester, buffer, strlen(buffer), ZMQ_NOBLOCK);
+                free(buffer);
+            }
         }
     }
 #endif
@@ -1412,11 +1415,14 @@ void P_cache_purge(struct chained_cache *queue[], int index, int safe_action)
 
         if (json)
         {
-            char *buffer = malloc(sizeof(char) * (strlen(json) + 5));
-            strcpy(buffer, "flow ");
-            strcat(buffer, json);
-            zmq_send (requester, buffer, strlen(buffer), ZMQ_NOBLOCK);
-            free(buffer);
+            char *buffer;
+            asprintf(&buffer, "flow %s", json);
+            free(json);
+            if (buffer)
+            {
+                zmq_send(requester, buffer, strlen(buffer), ZMQ_NOBLOCK);
+                free(buffer);
+            }
         }
     }
 #endif
