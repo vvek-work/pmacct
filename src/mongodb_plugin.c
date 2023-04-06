@@ -1,6 +1,6 @@
 /*
     pmacct (Promiscuous mode IP Accounting package)
-    pmacct is Copyright (C) 2003-2022 by Paolo Lucente
+    pmacct is Copyright (C) 2003-2023 by Paolo Lucente
 */
 
 /*
@@ -757,6 +757,7 @@ void MongoDB_cache_purge(struct chained_cache *queue[], int index, int safe_acti
       }
   
       if (config.what_to_count & COUNT_IP_TOS) bson_append_int(bson_elem, "tos", data->tos);
+      if (config.what_to_count_3 & COUNT_FLOW_LABEL) bson_append_int(bson_elem, "flow_label", data->flow_label);
       if (config.what_to_count_2 & COUNT_SAMPLING_RATE) bson_append_int(bson_elem, "sampling_rate", data->sampling_rate);
       if (config.what_to_count_2 & COUNT_SAMPLING_DIRECTION) bson_append_string(bson_elem, "sampling_direction",
 										sampling_direction_print(data->sampling_direction));
@@ -792,6 +793,10 @@ void MongoDB_cache_purge(struct chained_cache *queue[], int index, int safe_acti
 	bson_append_int(bson_elem, "mpls_label_stack", label_stack);
       }
 
+      if (config.what_to_count_2 & COUNT_PATH_DELAY_AVG_USEC) bson_append_int(bson_elem, "path_delay_avg_usec", pmpls->path_delay_avg_usec);
+      if (config.what_to_count_2 & COUNT_PATH_DELAY_MIN_USEC) bson_append_int(bson_elem, "path_delay_min_usec", pmpls->path_delay_min_usec);
+      if (config.what_to_count_2 & COUNT_PATH_DELAY_MAX_USEC) bson_append_int(bson_elem, "path_delay_max_usec", pmpls->path_delay_max_usec);
+
       if (config.what_to_count_2 & COUNT_TUNNEL_SRC_MAC) {
         etheraddr_string(ptun->tunnel_eth_shost, src_mac);
         bson_append_string(bson_elem, "tunnel_mac_src", src_mac);
@@ -815,6 +820,7 @@ void MongoDB_cache_purge(struct chained_cache *queue[], int index, int safe_acti
       }
 
       if (config.what_to_count_2 & COUNT_TUNNEL_IP_TOS) bson_append_int(bson_elem, "tunnel_tos", ptun->tunnel_tos);
+      if (config.what_to_count_3 & COUNT_TUNNEL_FLOW_LABEL) bson_append_int(bson_elem, "tunnel_flow_label", ptun->tunnel_flow_label);
       if (config.what_to_count_2 & COUNT_TUNNEL_SRC_PORT) bson_append_int(bson_elem, "tunnel_port_src", ptun->tunnel_src_port);
       if (config.what_to_count_2 & COUNT_TUNNEL_DST_PORT) bson_append_int(bson_elem, "tunnel_port_dst", ptun->tunnel_dst_port);
       if (config.what_to_count_2 & COUNT_TUNNEL_TCPFLAGS) bson_append_int(bson_elem, "tunnel_tcp_flags", data->tunnel_tcp_flags);

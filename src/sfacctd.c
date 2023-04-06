@@ -1,6 +1,6 @@
 /*  
     pmacct (Promiscuous mode IP Accounting package)
-    pmacct is Copyright (C) 2003-2022 by Paolo Lucente
+    pmacct is Copyright (C) 2003-2023 by Paolo Lucente
 */
 
 /*
@@ -49,6 +49,9 @@
 #if defined (WITH_NDPI)
 #include "ndpi/ndpi.h"
 #include "ndpi/ndpi_util.h"
+#endif
+#ifdef WITH_REDIS
+#include "ha.h"
 #endif
 
 /* variables to be exported away */
@@ -166,7 +169,7 @@ int main(int argc,char **argv, char **envp)
   int errflag, cp; 
 
 #ifdef WITH_REDIS
-  struct p_redis_host redis_host;
+  struct p_redis_host redis_host, redis_ha_host;
 #endif
 
 #if defined HAVE_MALLOPT
@@ -510,8 +513,11 @@ int main(int argc,char **argv, char **envp)
         if (list->cfg.what_to_count_2 & (COUNT_LABEL|COUNT_MPLS_LABEL_STACK))
           list->cfg.data_type |= PIPE_TYPE_VLEN;
 
-	evaluate_sums(&list->cfg.what_to_count, &list->cfg.what_to_count_2, list->name, list->type.string);
-	if (!list->cfg.what_to_count && !list->cfg.what_to_count_2 && !list->cfg.cpptrs.num) {
+	evaluate_sums(&list->cfg.what_to_count, &list->cfg.what_to_count_2,
+		      &list->cfg.what_to_count_3, list->name, list->type.string);
+
+	if (!list->cfg.what_to_count && !list->cfg.what_to_count_2 &&
+	    !list->cfg.what_to_count_3 && !list->cfg.cpptrs.num) {
 	  Log(LOG_WARNING, "WARN ( %s/%s ): defaulting to SRC HOST aggregation.\n", list->name, list->type.string);
 	  list->cfg.what_to_count |= COUNT_SRC_HOST;
 	}
@@ -628,6 +634,27 @@ int main(int argc,char **argv, char **envp)
 
   sighandler_action.sa_handler = PM_sigalrm_noop_handler;
   sigaction(SIGALRM, &sighandler_action, NULL);
+
+#ifdef WITH_REDIS
+  /* Signals for BMP-BGP-HA feature */
+  if (config.bgp_bmp_daemon_ha) {
+    /* reset the local timestamp of the collector (SIGNAL=34)*/
+    sighandler_action.sa_handler = bmp_bgp_ha_regenerate_timestamp;
+    sigaction(SIGRTMIN, &sighandler_action, NULL);
+
+    /* set collector to forced active mode (SIGNAL=35)*/
+    sighandler_action.sa_handler = bmp_bgp_ha_set_to_active;
+    sigaction(SIGRTMIN + 1, &sighandler_action, NULL);
+
+    /* set collector to forced stand-by mode (SIGNAL=36)*/
+    sighandler_action.sa_handler = bmp_bgp_ha_set_to_standby;
+    sigaction(SIGRTMIN + 2, &sighandler_action, NULL);
+
+    /* set collector back to timestamp-based (i.e. non-forced) mode (SIGNAL=37)*/
+    sighandler_action.sa_handler = bmp_bgp_ha_set_to_normal;
+    sigaction(SIGRTMIN + 3, &sighandler_action, NULL);
+  }
+#endif
 
   if (config.pcap_savefile) {
     open_pcap_savefile(&device, config.pcap_savefile);
@@ -1088,14 +1115,41 @@ int main(int argc,char **argv, char **envp)
 #endif
   else {
     char srv_string[INET6_ADDRSTRLEN];
+    char *srv_interface = NULL, default_interface[] = "all";
     struct host_addr srv_addr;
     u_int16_t srv_port;
 
+    if (!config.nfacctd_interface) {
+      srv_interface = default_interface;
+    }
+    else {
+      srv_interface = config.nfacctd_interface;
+    }
+
     sa_to_addr((struct sockaddr *)&server, &srv_addr, &srv_port);
     addr_to_str(srv_string, &srv_addr);
-    Log(LOG_INFO, "INFO ( %s/core ): waiting for sFlow data on %s:%u\n", config.name, srv_string, srv_port);
+
+    Log(LOG_INFO, "INFO ( %s/core ): waiting for sFlow data on interface=%s ip=%s port=%u/udp\n",
+	config.name, srv_interface, srv_string, srv_port);
+
     allowed = TRUE;
   }
+
+#ifdef WITH_REDIS
+  /* Kicking off redis-reladed thread(s) */
+  if (config.redis_host) {
+    char log_id[SHORTBUFLEN];
+
+    snprintf(log_id, sizeof(log_id), "%s/%s", config.name, config.type);
+
+    if (config.bgp_bmp_daemon_ha) {
+      /* If BMP-BGP-HA feature is enabled, redirect redis thread */
+      p_redis_init(&redis_ha_host, log_id, p_redis_thread_bmp_bgp_ha_handler);
+    }
+
+    p_redis_init(&redis_host, log_id, p_redis_thread_produce_common_core_handler);
+  }
+#endif
 
   if (config.sfacctd_counter_file || config.sfacctd_counter_amqp_routing_key || config.sfacctd_counter_kafka_topic) {
     if (config.sfacctd_counter_file) sfacctd_counter_backend_methods++;
@@ -1150,15 +1204,6 @@ int main(int argc,char **argv, char **envp)
 #endif
   }
 
-#ifdef WITH_REDIS
-  if (config.redis_host) {
-    char log_id[SHORTBUFLEN];
-
-    snprintf(log_id, sizeof(log_id), "%s/%s", config.name, config.type);
-    p_redis_init(&redis_host, log_id, p_redis_thread_produce_common_core_handler);
-  }
-#endif
-
   if (alloc_sppi) {
     spp.sppi = malloc(sizeof(SFSample));
     memset(spp.sppi, 0, sizeof(SFSample));
@@ -1173,6 +1218,23 @@ int main(int argc,char **argv, char **envp)
   if (config.daemon) {
     sigaddset(&signal_set, SIGINT);
   }
+
+#ifdef WITH_REDIS
+  if (config.bgp_bmp_daemon_ha) {
+    /* Signals for BMP-BGP-HA feature */
+    sigaddset(&signal_set, SIGRTMIN);
+    sigaddset(&signal_set, SIGRTMIN + 1);
+    sigaddset(&signal_set, SIGRTMIN + 2);
+    sigaddset(&signal_set, SIGRTMIN + 3);
+  }
+#endif
+
+#ifdef WITH_REDIS
+  if (config.bgp_bmp_daemon_ha) {
+    /* Kicking off BMP-BGP-HA feature (BMP-BGP Daemon High Availability) */
+    bmp_bgp_ha_main();
+  }
+#endif
 
   /* Main loop */
   for (;;) {
@@ -1707,13 +1769,16 @@ void finalizeSample(SFSample *sample, struct packet_ptrs_vector *pptrsv, struct 
   /*
      We consider packets if:
      - sample->gotIPV4 || sample->gotIPV6 : it belongs to either an IPv4 or IPv6 packet.
+     - sample->eth_type == ETHERTYPE_ARP : pass ARP samples in case we want to account for them.
      - !sample->eth_type : we don't know the L3 protocol. VLAN or MPLS accounting case.
   */
-  if (sample->gotIPV4 || sample->gotIPV6 || !sample->eth_type) {
+  if (sample->gotIPV4 || sample->gotIPV6 || sample->eth_type == ETHERTYPE_ARP || !sample->eth_type) {
     reset_net_status_v(pptrsv);
     pptrs->flow_type.traffic_type = SF_evaluate_flow_type(pptrs);
 
-    if (config.classifier_ndpi || config.aggregate_primitives) sf_flow_sample_hdr_decode(sample);
+    if (config.classifier_ndpi || config.aggregate_primitives || sample->eth_type == ETHERTYPE_ARP) {
+      sf_flow_sample_hdr_decode(sample);
+    }
 
     /* we need to understand the IP protocol version in order to build the fake packet */
     switch (pptrs->flow_type.traffic_type) {
@@ -2061,6 +2126,10 @@ void finalizeSample(SFSample *sample, struct packet_ptrs_vector *pptrsv, struct 
       exec_plugins(&pptrsv->vlanmpls6, req);
       break;
     default:
+      if (config.aggregate_unknown_etype && sample->eth_type == ETHERTYPE_ARP) {
+	if (config.bgp_daemon_to_xflow_agent_map) BTA_find_id((struct id_table *)pptrs->bta_table, pptrs, &pptrs->bta, &pptrs->bta2);
+        exec_plugins(pptrs, req);
+      }
       break;
     }
   }

@@ -1,6 +1,6 @@
 /*  
     pmacct (Promiscuous mode IP Accounting package)
-    pmacct is Copyright (C) 2003-2022 by Paolo Lucente
+    pmacct is Copyright (C) 2003-2023 by Paolo Lucente
 */
 
 /*
@@ -309,12 +309,22 @@ int skinny_bmp_daemon()
 
     {
       char srv_string[INET6_ADDRSTRLEN];
+      char *srv_interface = NULL, default_interface[] = "all";
       struct host_addr srv_addr;
       u_int16_t srv_port;
 
+      if (!config.bmp_daemon_interface) {
+	srv_interface = default_interface;
+      }
+      else {
+	srv_interface = config.bmp_daemon_interface;
+      }
+
       sa_to_addr((struct sockaddr *)&server, &srv_addr, &srv_port);
       addr_to_str(srv_string, &srv_addr);
-      Log(LOG_INFO, "INFO ( %s/%s ): waiting for BMP data on %s:%u\n", config.name, bmp_misc_db->log_str, srv_string, srv_port);
+
+      Log(LOG_INFO, "INFO ( %s/%s ): waiting for BMP data on interface=%s ip=%s port=%u/tcp\n",
+	  config.name, bmp_misc_db->log_str, srv_interface, srv_string, srv_port);
     }
 
 #if defined WITH_EBPF
@@ -595,6 +605,18 @@ int skinny_bmp_daemon()
     sigaddset(&signal_set, SIGINT);
   }
 
+  if (!bmp_misc_db->is_thread) {
+#ifdef WITH_REDIS
+    if (config.bgp_bmp_daemon_ha) {
+      /* Signals for BMP-BGP-HA feature */
+      sigaddset(&signal_set, SIGRTMIN);
+      sigaddset(&signal_set, SIGRTMIN + 1);
+      sigaddset(&signal_set, SIGRTMIN + 2);
+      sigaddset(&signal_set, SIGRTMIN + 3);
+    }
+#endif
+  }
+
   for (;;) {
     select_again:
 
@@ -674,22 +696,19 @@ int skinny_bmp_daemon()
 	  bgp_peer_log_seq_init(&bmp_misc_db->log_seq);
       }
 
-
-      int refreshTimePerSlot = config.bmp_dump_refresh_time / config.bmp_dump_time_slots;
       if (bmp_misc_db->dump_backend_methods) {
+        bmp_misc_db->dump.period = config.bmp_dump_refresh_time / config.bmp_dump_time_slots;
         while (bmp_misc_db->log_tstamp.tv_sec > dump_refresh_deadline) {
           bmp_misc_db->dump.tstamp.tv_sec = dump_refresh_deadline;
           bmp_misc_db->dump.tstamp.tv_usec = 0;
           compose_timestamp(bmp_misc_db->dump.tstamp_str, SRVBUFLEN, &bmp_misc_db->dump.tstamp, FALSE,
 			    config.timestamps_since_epoch, config.timestamps_rfc3339, config.timestamps_utc);
-	  bmp_misc_db->dump.period = refreshTimePerSlot;
 
 	  if (bgp_peer_log_seq_has_ro_bit(&bmp_misc_db->log_seq))
 	    bgp_peer_log_seq_init(&bmp_misc_db->log_seq);
 
           bmp_handle_dump_event(max_peers_idx);
-
-          dump_refresh_deadline += refreshTimePerSlot;
+          dump_refresh_deadline += bmp_misc_db->dump.period;
         }
       }
 

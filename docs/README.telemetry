@@ -1,0 +1,133 @@
+INTRODUCTION.
+After some years in which the strategy towards Streaming Telemetry was
+dual (pmgrpcd.py, written in Python, to support gRPC and pmtelemetryd,
+written in C, to support everything else), the current approach (as of
+version 1.7.9) is to bring also gRPC into pmtelemetryd via an external
+C++ library, https://github.com/network-analytics/mdt-dialout-collector
+Following is the support matrix for Streaming Telemetry collection in
+pmtelemtryd:
+
+Input transports:
+* TCP proprietary / non-standard
+* UDP proprietary / non-standard
+* UDP draft-ietf-netconf-udp-notif
+* gRPC
+* gNMI [WiP]
+
+Input encodings:
+* JSON
+* Protobuf
+
+Output methods:
+* Kafka
+* files
+
+Output encodings:
+* JSON
+
+Examples of supported collection scenarios:
+* TCP/JSON -> pmtelemetryd -> Kafka/JSON
+* UDP draft-ietf-netconf-udp-notif/JSON -> pmtelemetryd -> Kafka/JSON
+* gRPC/Protobuf -> pmtelemetryd -> Kafka/JSON
+
+
+ROUTER CONFIGS.
+IOS XR configuration example, gRPC JSON encoding suitable (at time of
+this writing) for Openconfig YANG models, ie. openconfig-interface and
+openconfig-platform:
+
+telemetry model-driven
+ destination-group COLLECTOR
+  address-family ipv4 X.X.X.X port 10000
+   encoding json
+   protocol grpc no-tls
+  !
+ !
+ sensor-group SENSOR
+  sensor-path openconfig-platform:components
+  sensor-path openconfig-interfaces:interfaces
+ !
+ subscription SUBSCRIPTION
+  sensor-group-id SENSOR sample-interval 30000
+  destination-id COLLECTOR
+  source-interface Loopback0
+ !
+!
+
+IOS XR configuration example, gRPC GPB key-value encoding suitable for 
+for Cisco YANG models, ie. Cisco-IOS-XR-infra-statsd-oper: 
+
+telemetry model-driven
+ destination-group COLLECTOR
+  address-family ipv4 X.X.X.X port 10000
+   encoding compact-gpb
+   protocol grpc no-tls
+  !
+ !
+ sensor-group SENSOR
+  sensor-path Cisco-IOS-XR-infra-statsd-oper:infra-statistics/interfaces/interface/latest/generic-counters
+ !
+ subscription SUBSCRIPTION
+  sensor-group-id SENSOR sample-interval 30000
+  destination-id COLLECTOR
+  source-interface Loopback0
+ !
+!
+
+Huawei VRP configuration example, gRPC compact GPB encoding:
+
+telemetry
+ #
+ sensor-group SENSOR
+  sensor-path huawei-ifm:ifm/interfaces/interface/ifStatistics
+ #
+ destination-group COLLECTOR
+  ipv4-address X.X.X.X port 10000 vpn-instance MANAGEMENT_VRF protocol grpc no-tls
+ #
+ subscription SUBSCRIPTION
+  sensor-group SENSOR
+  destination-group COLLECTOR
+#
+return
+
+Huawei VRP configuration example, JSON over UDP-notif (draft-ietf-netconf-udp-notif) transport:
+
+telemetry
+ udp-model udp-notif
+ #
+ sensor-group SENSOR
+  sensor-path huawei-ifm:ifm/interfaces/interface/ifStatistics
+ #
+ destination-group COLLECTOR
+  ipv4-address X.X.X.X port 10000 vpn-instance MANAGEMENT_VRF
+ #
+ subscription SUBSCRIPTION
+  protocol udp
+  encoding json
+  sensor-group SENSOR
+  destination-group COLLECTOR
+#
+return
+
+Juniper Native format telemetry configuration example, GPB encoding over UDP transport:
+
+services {
+    analytics {
+	streaming-server pmacct-server {
+	    remote-address X.X.X.X;
+	    remote-port 50000;
+        }
+        export-profile pmacct-server-export-params {
+	    local-address X.X.X.X;
+	    local-port 21111;           
+	    reporting-rate 30;
+	    format gpb;
+	    transport udp;
+        }
+        sensor interface-xe {
+	    server-name pmacct-server;
+	    export-name pmacct-server-export-params;
+	    resource /junos/system/linecard/interface/logical/usage/;
+        }
+    }
+}

@@ -1,6 +1,6 @@
 /*
     pmacct (Promiscuous mode IP Accounting package)
-    pmacct is Copyright (C) 2003-2022 by Paolo Lucente
+    pmacct is Copyright (C) 2003-2023 by Paolo Lucente
 */
 
 /*
@@ -24,7 +24,7 @@
 #define ARGS_SFACCTD "n:dDhP:b:f:F:c:m:p:r:s:S:L:l:o:t:O:MuRVaAE:I:WZ:Y:"
 #define ARGS_PMACCTD "n:NdDhP:b:f:F:c:i:I:m:p:r:s:S:o:t:O:MuwWZ:Y:L:RVazAE:"
 #define ARGS_UACCTD "n:NdDhP:b:f:F:c:m:p:r:s:S:o:t:O:MuRg:L:VaAE:"
-#define ARGS_PMTELEMETRYD "hVL:u:t:Z:f:dDS:F:o:O:i:"
+#define ARGS_PMTELEMETRYD "hVL:u:t:f:dDS:F:o:O:i:"
 #define ARGS_PMBGPD "hVL:l:f:dDS:F:o:O:i:gm:"
 #define ARGS_PMBMPD "hVL:l:f:dDS:F:o:O:i:I:Z:Y:T:"
 #define ARGS_PMACCT "hSsc:Cetm:p:P:M:arN:n:lT:O:E:uVUiI0"
@@ -264,7 +264,14 @@
 #define COUNT_INT_FW_EVENT		0x0002020000000000ULL
 #define COUNT_INT_TUNNEL_TCPFLAGS	0x0002040000000000ULL
 #define COUNT_INT_OUT_VLAN		0x0002080000000000ULL
+#define COUNT_INT_PATH_DELAY_AVG_USEC	0x0002100000000000ULL
+#define COUNT_INT_PATH_DELAY_MIN_USEC	0x0002200000000000ULL
+#define COUNT_INT_PATH_DELAY_MAX_USEC	0x0002400000000000ULL
 #define COUNT_INT_CUSTOM_PRIMITIVES	0x0002800000000000ULL
+
+/* internal: third registry, ie. what_to_count_3, aggregation_3, etc. */
+#define COUNT_INT_FLOW_LABEL		0x0003000000000001ULL
+#define COUNT_INT_TUNNEL_FLOW_LABEL	0x0003000000000002ULL
 
 #define COUNT_INDEX_MASK	0xFFFF
 #define COUNT_INDEX_CP		0xFFFF000000000000ULL  /* index 0xffff reserved to custom primitives */
@@ -366,7 +373,14 @@
 #define COUNT_FW_EVENT			(COUNT_INT_FW_EVENT & COUNT_REGISTRY_MASK)
 #define COUNT_TUNNEL_TCPFLAGS		(COUNT_INT_TUNNEL_TCPFLAGS & COUNT_REGISTRY_MASK)
 #define COUNT_OUT_VLAN			(COUNT_INT_OUT_VLAN & COUNT_REGISTRY_MASK)
+#define COUNT_PATH_DELAY_AVG_USEC	(COUNT_INT_PATH_DELAY_AVG_USEC & COUNT_REGISTRY_MASK)
+#define COUNT_PATH_DELAY_MIN_USEC	(COUNT_INT_PATH_DELAY_MIN_USEC & COUNT_REGISTRY_MASK)
+#define COUNT_PATH_DELAY_MAX_USEC	(COUNT_INT_PATH_DELAY_MAX_USEC & COUNT_REGISTRY_MASK)
 #define COUNT_CUSTOM_PRIMITIVES		(COUNT_INT_CUSTOM_PRIMITIVES & COUNT_REGISTRY_MASK)
+
+/* external: third registry, ie. what_to_count_3, aggregation_3, etc. */
+#define COUNT_FLOW_LABEL		(COUNT_INT_FLOW_LABEL & COUNT_REGISTRY_MASK)
+#define COUNT_TUNNEL_FLOW_LABEL		(COUNT_INT_TUNNEL_FLOW_LABEL & COUNT_REGISTRY_MASK)
 /* PRIMITIVES DEFINITION: END */
 
 /* BYTES and PACKETS are used into templates; we let their values to
@@ -559,6 +573,9 @@ typedef u_int64_t pm_counter_t;
 #define PM_FTYPE_VLAN_MPLS		15 /* PM_FTYPE_MPLS + PM_FTYPE_VLAN */
 #define PM_FTYPE_VLAN_MPLS_IPV4		17 /* PM_FTYPE_VLAN_MPLS + PM_FTYPE_IPV4 */
 #define PM_FTYPE_VLAN_MPLS_IPV6		18 /* PM_FTYPE_VLAN_MPLS + PM_FTYPE_IPV6 */
+#define PM_FTYPE_SRV6			20
+#define PM_FTYPE_SRV6_IPV4		22 /* PM_FTYPE_SRV6 + PM_FTYPE_IPV4 */
+#define PM_FTYPE_SRV6_IPV6		23 /* PM_FTYPE_SRV6 + PM_FTYPE_IPV6 */
 #define PM_FTYPE_TRAFFIC_MAX		99  /* temporary: re-coding needed */
 
 /* flow type: NetFlow/IPFIX extended code-points */

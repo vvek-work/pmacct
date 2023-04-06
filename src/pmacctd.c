@@ -1,6 +1,6 @@
 /*
     pmacct (Promiscuous mode IP Accounting package)
-    pmacct is Copyright (C) 2003-2022 by Paolo Lucente
+    pmacct is Copyright (C) 2003-2023 by Paolo Lucente
 */
 
 /*
@@ -39,6 +39,9 @@
 #include "ndpi/ndpi_util.h"
 #endif
 #include "jhash.h"
+#ifdef WITH_REDIS
+#include "ha.h"
+#endif
 
 /* Functions */
 void usage_daemon(char *prog_name)
@@ -316,7 +319,7 @@ int main(int argc,char **argv, char **envp)
   struct sockaddr_storage client;
 
 #ifdef WITH_REDIS
-  struct p_redis_host redis_host;
+  struct p_redis_host redis_host, redis_ha_host;
 #endif
 
 #if defined HAVE_MALLOPT
@@ -658,8 +661,10 @@ int main(int argc,char **argv, char **envp)
 	config.handle_fragments = TRUE;
 	list->cfg.nfprobe_what_to_count = list->cfg.what_to_count;
 	list->cfg.nfprobe_what_to_count_2 = list->cfg.what_to_count_2;
-	list->cfg.what_to_count = 0;
-	list->cfg.what_to_count_2 = 0;
+	list->cfg.nfprobe_what_to_count_3 = list->cfg.what_to_count_3;
+	list->cfg.what_to_count = FALSE;
+	list->cfg.what_to_count_2 = FALSE;
+	list->cfg.what_to_count_3 = FALSE;
 #if defined (HAVE_L2)
 	if (list->cfg.nfprobe_version == 9 || list->cfg.nfprobe_version == 10) {
 	  list->cfg.what_to_count |= COUNT_SRC_MAC;
@@ -737,7 +742,8 @@ int main(int argc,char **argv, char **envp)
 
 	if (psize < 128) psize = config.snaplen = 128; /* SFL_DEFAULT_HEADER_SIZE */
 	list->cfg.what_to_count = COUNT_PAYLOAD;
-	list->cfg.what_to_count_2 = 0;
+	list->cfg.what_to_count_2 = FALSE;
+	list->cfg.what_to_count_3 = FALSE;
 #if defined (WITH_NDPI)
 	if (list->cfg.ndpi_num_roots) list->cfg.what_to_count_2 |= COUNT_NDPI_CLASS;
 #endif
@@ -798,14 +804,17 @@ int main(int argc,char **argv, char **envp)
         if (list->cfg.what_to_count_2 & (COUNT_LABEL|COUNT_MPLS_LABEL_STACK))
           list->cfg.data_type |= PIPE_TYPE_VLEN;
 
-	evaluate_sums(&list->cfg.what_to_count, &list->cfg.what_to_count_2, list->name, list->type.string);
+	evaluate_sums(&list->cfg.what_to_count, &list->cfg.what_to_count_2,
+		      &list->cfg.what_to_count_3, list->name, list->type.string);
+
 	if (list->cfg.what_to_count & (COUNT_SRC_PORT|COUNT_DST_PORT|COUNT_SUM_PORT|COUNT_TCPFLAGS))
 	  config.handle_fragments = TRUE;
 	if (list->cfg.what_to_count & COUNT_FLOWS) {
 	  config.handle_fragments = TRUE;
 	  config.handle_flows = TRUE;
 	}
-	if (!list->cfg.what_to_count && !list->cfg.what_to_count_2 && !list->cfg.cpptrs.num) {
+	if (!list->cfg.what_to_count && !list->cfg.what_to_count_2 &&
+	    !list->cfg.what_to_count_3 && !list->cfg.cpptrs.num) {
 	  Log(LOG_WARNING, "WARN ( %s/%s ): defaulting to SRC HOST aggregation.\n", list->name, list->type.string);
 	  list->cfg.what_to_count |= COUNT_SRC_HOST;
 	}
@@ -1009,6 +1018,27 @@ int main(int argc,char **argv, char **envp)
   sighandler_action.sa_handler = PM_sigalrm_noop_handler;
   sigaction(SIGALRM, &sighandler_action, NULL);
 
+#ifdef WITH_REDIS
+  /* Signals for BMP-BGP-HA feature */
+  if (config.bgp_bmp_daemon_ha) {
+    /* reset the local timestamp of the collector (SIGNAL=34)*/
+    sighandler_action.sa_handler = bmp_bgp_ha_regenerate_timestamp;
+    sigaction(SIGRTMIN, &sighandler_action, NULL);
+
+    /* set collector to forced active mode (SIGNAL=35)*/
+    sighandler_action.sa_handler = bmp_bgp_ha_set_to_active;
+    sigaction(SIGRTMIN + 1, &sighandler_action, NULL);
+
+    /* set collector to forced stand-by mode (SIGNAL=36)*/
+    sighandler_action.sa_handler = bmp_bgp_ha_set_to_standby;
+    sigaction(SIGRTMIN + 2, &sighandler_action, NULL);
+
+    /* set collector back to timestamp-based (i.e. non-forced) mode (SIGNAL=37)*/
+    sighandler_action.sa_handler = bmp_bgp_ha_set_to_normal;
+    sigaction(SIGRTMIN + 3, &sighandler_action, NULL);
+  }
+#endif
+
   if (config.bgp_daemon && config.bmp_daemon) {
     Log(LOG_ERR, "ERROR ( %s/core ): bgp_daemon and bmp_daemon are currently mutual exclusive. Exiting.\n", config.name);
     exit_gracefully(1);
@@ -1173,11 +1203,18 @@ int main(int argc,char **argv, char **envp)
   }
 
 #ifdef WITH_REDIS
+  /* Kicking off redis-reladed thread(s) */
   if (config.redis_host) {
     char log_id[SHORTBUFLEN];
 
     snprintf(log_id, sizeof(log_id), "%s/%s", config.name, config.type);
-    p_redis_init(&redis_host, log_id, p_redis_thread_produce_common_core_handler);
+
+    if (config.bgp_bmp_daemon_ha) {
+      /* If BMP-BGP-HA feature is enabled, redirect redis thread */
+      p_redis_init(&redis_ha_host, log_id, p_redis_thread_bmp_bgp_ha_handler); 
+    }
+
+    p_redis_init(&redis_host, log_id, p_redis_thread_produce_common_core_handler); 
   }
 #endif
 
@@ -1190,7 +1227,25 @@ int main(int argc,char **argv, char **envp)
   if (config.daemon) {
     sigaddset(&cb_data.sig.set, SIGINT);
   }
+
+#ifdef WITH_REDIS
+  if (config.bgp_bmp_daemon_ha) {
+    /* Signals for BMP-BGP-HA feature */
+    sigaddset(&cb_data.sig.set, SIGRTMIN);
+    sigaddset(&cb_data.sig.set, SIGRTMIN + 1);
+    sigaddset(&cb_data.sig.set, SIGRTMIN + 2);
+    sigaddset(&cb_data.sig.set, SIGRTMIN + 3);
+  }
+#endif
+
   cb_data.sig.is_set = TRUE;
+
+#if defined WITH_REDIS
+  if (config.bgp_bmp_daemon_ha) {
+    /* Kicking off BMP-BGP-HA feature (BMP-BGP Daemon High Availability) */
+    bmp_bgp_ha_main();
+  }
+#endif
 
   /* Main loop (for the case of a single interface): if pcap_loop() exits
      maybe an error occurred; we will try closing and reopening again our

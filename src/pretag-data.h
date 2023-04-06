@@ -63,7 +63,6 @@ const struct _map_dictionary_line tag_map_dictionary[] = {
   {"jeq", PT_map_jeq_handler},
   {"return", PT_map_return_handler},
   {"stack", PT_map_stack_handler},
-  {"fwdstatus", PT_map_fwd_status_handler}, /* XXX: to be deprecated */
   {"fwd_status", PT_map_fwd_status_handler},
   {"is_bi_flow", PT_map_is_bi_flow_handler},
   {"is_nsel", PT_map_is_nsel_handler},
@@ -73,6 +72,7 @@ const struct _map_dictionary_line tag_map_dictionary[] = {
 
 const struct _map_index_internal_dictionary_line tag_map_index_entries_dictionary[] = {
   {PRETAG_IP, PT_map_index_entries_ip_handler},
+  {PRETAG_IP_AF, PT_map_index_entries_ip_af_handler},
   {PRETAG_IN_IFACE, PT_map_index_entries_input_handler},
   {PRETAG_OUT_IFACE, PT_map_index_entries_output_handler},
   {PRETAG_BGP_NEXTHOP, PT_map_index_entries_bgp_nexthop_handler},
@@ -92,12 +92,12 @@ const struct _map_index_internal_dictionary_line tag_map_index_entries_dictionar
   {PRETAG_DST_NET, PT_map_index_entries_dst_net_handler},
   {PRETAG_IS_MULTICAST, PT_map_index_entries_is_multicast_handler},
   {PRETAG_FWDSTATUS_ID, PT_map_index_entries_fwd_status_handler},
-  {PRETAG_NULL, PT_map_index_entries_null_handler},
   {0, NULL}
 };
 
 const struct _map_index_dictionary_line tag_map_index_fdata_dictionary[] = {
   {PRETAG_IP, PT_map_index_fdata_ip_handler},
+  {PRETAG_IP_AF, PT_map_index_fdata_ip_af_handler},
   {PRETAG_IN_IFACE, PT_map_index_fdata_input_handler},
   {PRETAG_OUT_IFACE, PT_map_index_fdata_output_handler},
   {PRETAG_BGP_NEXTHOP, PT_map_index_fdata_bgp_nexthop_handler},
@@ -117,12 +117,12 @@ const struct _map_index_dictionary_line tag_map_index_fdata_dictionary[] = {
   {PRETAG_DST_NET, PT_map_index_fdata_dst_net_handler},
   {PRETAG_IS_MULTICAST, PT_map_index_fdata_is_multicast_handler},
   {PRETAG_FWDSTATUS_ID, PT_map_index_fdata_fwd_status_handler},
-  {PRETAG_NULL, PT_map_index_fdata_null_handler},
   {0, NULL}
 };
 
 const struct _map_index_size_dictionary_line tag_map_index_entries_size_dictionary[] = {
   {PRETAG_IP, sizeof(struct host_addr)},
+  {PRETAG_IP_AF, sizeof(u_int8_t)},
   {PRETAG_IN_IFACE, sizeof(u_int32_t)},
   {PRETAG_OUT_IFACE, sizeof(u_int32_t)},
   {PRETAG_BGP_NEXTHOP, sizeof(struct host_addr)},
@@ -141,7 +141,6 @@ const struct _map_index_size_dictionary_line tag_map_index_entries_size_dictiona
   {PRETAG_DST_NET, (sizeof(struct host_addr) /* net */ + sizeof(u_int8_t) /* mask */)},
   {PRETAG_IS_MULTICAST, sizeof(u_int8_t)},
   {PRETAG_FWDSTATUS_ID, sizeof(u_int8_t)},
-  {PRETAG_NULL, sizeof(u_int8_t)},
   {0, 0}
 };
 

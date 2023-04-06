@@ -1,5 +1,5 @@
 pmacct [IP traffic accounting : BGP : BMP : RPKI : IGP : Streaming Telemetry]
-pmacct is Copyright (C) 2003-2022 by Paolo Lucente
+pmacct is Copyright (C) 2003-2023 by Paolo Lucente
 
 
 TABLE OF CONTENTS:
@@ -1243,8 +1243,8 @@ To enable the feature please follow these steps:
 2) Download nDPI from its GitHub repository (https://github.com/ntop/nDPI). The
    nDPI API tends to change frequently in a non-backward compatible fashion.
    This means that not every version of pmacct will work with any version of
-   nDPI. pmacct 1.7.8 and later work against nDPI 4.0-stable, 4.2-stable and
-   4.4-stable.
+   nDPI. pmacct 1.7.8 works against nDPI 4.0-stable, 4.2-stable and 4.4-stable.
+   pmacct 1.7.9 does work against 4.6-stable.
 
 3) Configure for compiling, compile and install the downloaded nDPI library, ie.
    inside the nDPI directory:
@@ -1266,20 +1266,11 @@ To enable the feature please follow these steps:
 
    If using a nDPI library that is not installed (or not installed in a default
    location) on the system, then NDPI_LIBS and NDPI_CFLAGS should be set to the
-   location where nDPI headers and dynamic library are lyingi, for example:
+   location where nDPI headers and dynamic library are lying, for example:
 
    shell> NDPI_LIBS=-L/path/to/nDPI/src/lib/.libs  
    shell> NDPI_CFLAGS=-I/path/to/nDPI/src/include
    shell> export NDPI_LIBS NDPI_CFLAGS
-   shell> ./configure --enable-ndpi
-   shell> make; make install
-
-   If using a nDPI library that does not install libndpi.pc pkg-config file in a
-   standard directory, then PKG_CONFIG_PATH should be set (this seems to be true
-   for both 2.6 and 2.8 releases), for example:
-
-   shell> PKG_CONFIG_PATH=/usr/local/libdata/pkgconfig
-   shell> export PKG_CONFIG_PATH
    shell> ./configure --enable-ndpi
    shell> make; make install
 
@@ -2363,7 +2354,8 @@ daemon is suitable for consuming BMP data only, real-time or at regular
 intervals; the thread solution is suitable for correlation of BMP with other
 data sources, ie. NetFlow, IPFIX, sFlow, etc.. The implementation bases on
 rfc7854 and is in-sync with most recent RFCs and draft-ietf-grow-bmp-* IETF
-documents (ie. rfc8671, ietf-grow-bmp-local-rib, ietf-grow-bmp-tlv, etc.).
+documents (ie. rfc8671, rfc9069, ietf-grow-bmp-tlv, ietf-grow-bmp-tlv-ebit,
+etc.).
 
 If unfamiliar with BMP, to quote rfc7854: "BMP is intended to provide a more
 convenient interface for obtaining route views for research purpose than the
@@ -2373,10 +2365,10 @@ BMP simple, useful, easily implemented, and minimally service-affecting.".
 The BMP daemon currently supports BMP data, events and stats, ie. initiation,
 termination, peer up, peer down, stats and route monitoring messages (that is
 no route mirroring messages; please get in touch if an implementation is
-wanted in this sense). The daemon enables to write BMP messages to files, AMQP
-and Kafka brokers, real-time (msglog) or at regular time intervals (dump).
-Also, route monitoring messages are saved in a RIB structure for IP prefix
-lookup.
+wanted in this sense). The daemon allows to write BMP messages to files,
+AMQP and Kafka brokers, real-time (msglog) or at regular time intervals
+(dump). Also, route monitoring messages are saved in a RIB structure for IP
+prefix lookup.
 
 All features export data formatted as JSON or Avro messages. Please review
 the section "Compiling pmacct with JSON support" and, if planning to use Avro
@@ -2387,11 +2379,11 @@ or "Running the Kafka plugin" sections of this document. If making use of the
 Schema Registry component of the Confluent Platform please also review the
 "Running the Kafka plugin" section.
 
-Following a simple example on how to configure nfacctd to enable the BMP thread
-to a) log, in real-time, BGP stats, events and routes received via BMP to a
-text-file (bmp_daemon_msglog_file) and b) dump the same (ie. BGP stats and
-events received via BMP) to a text-file and at regular time intervals
-(bmp_dump_refresh_time, bmp_dump_file):
+Following a simple example on how to configure nfacctd to enable the BMP
+thread to a) log, in real-time, BGP stats, events and routes received via
+BMP to a text-file (bmp_daemon_msglog_file) and b) dump the same (ie. BGP
+stats and events received via BMP) to a text-file and at regular time
+intervals (bmp_dump_refresh_time, bmp_dump_file):
 
 bmp_daemon: true
 !
@@ -2400,11 +2392,11 @@ bmp_daemon_msglog_file: /path/to/bmp-$peer_src_ip.log
 bmp_dump_file: /path/to/bmp-$peer_src_ip-%H%M.dump
 bmp_dump_refresh_time: 60
 
-Following a simple example on how to configure nfacctd to enable the BMP thread
-to a) log, in real-time, BGP stats, events and routes received via BMP to a
-Kafka broker (bmp_daemon_msglog_kafka_topic) and b) dump the same (ie. BGP stats
-and events received via BMP) to a text-file and at regular time intervals
-(bmp_dump_refresh_time, bmp_dump_kafka_topic):
+Following a simple example on how to configure nfacctd to enable the BMP
+thread to a) log, in real-time, BGP stats, events and routes received via
+BMP to a Kafka broker (bmp_daemon_msglog_kafka_topic) and b) dump the same
+(ie. BGP stats and events received via BMP) to a text-file and at regular
+time intervals (bmp_dump_refresh_time, bmp_dump_kafka_topic):
 
 bmp_daemon: true
 !
@@ -2416,9 +2408,12 @@ bmp_dump_refresh_time: 60
 ! [Optional] librdkafka config for buffer tuning, ssl config, etc. 
 ! bmp_dump_config_file: /path/to/librdkafka.conf
 
-The equivalent bmp_daemon_msglog_amqp_routing_key and bmp_dump_amqp_routing_key
-config directives can be used to make the above example work against a RabbitMQ
-broker.
+When many BMP exporters are pointed to a BMP receiver writing to Kafka, as
+in the example above, due to the state synchronization nature of Route
+Monitoring, the amount of data to be produced to the broker may exceed
+default queues depth. Please see the "Running the Kafka plugin" section of
+this document on how to adjust Kakfa queue depths via directives like
+batch.num.messages, queue.buffering.max.messages, etc.
 
 A sample of both the BMP msglog and dump formats are captured in the following
 document: docs/MSGLOG_DUMP_FORMATS
@@ -2426,8 +2421,8 @@ document: docs/MSGLOG_DUMP_FORMATS
 Setting up the stand-alone BMP collector daemon, pmbmpd, is the exact same as
 the configuration above except the 'bmp_daemon: true' line can be skipped.
 
-Following is an example of how a Cisco router running IOS/IOS-XE (15.4(2)T) should be
-configured in order to export BMP data to a collector:
+Following is an example of how a Cisco router running IOS/IOS-XE (15.4(2)T)
+should be configured in order to export BMP data to a collector:
 
 router bgp 64512
  bmp server 1
@@ -2444,8 +2439,8 @@ router bgp 64512
  neighbor Z.Z.Z.Z remote-as 64514
  neighbor Z.Z.Z.Z bmp-activate all
 
-Following is an example how a Cisco router running IOS-XR (6.2.1) should be configured
-in order to export BMP data to a collector:
+Following is an example how a Cisco router running IOS-XR (6.2.1) should be
+configured in order to export BMP data to a collector:
 
 router bgp 64512
  neighbor Y.Y.Y.Y
@@ -2509,7 +2504,7 @@ bmp
 
 Contribution of further configuration examples for Cisco and Juniper devices
 and/or other relevant vendors is more than welcome.
- 
+
 
 XVIII. Quickstart guide to setup Streaming Telemetry collection
 Quoting Cisco IOS-XR Telemetry Configuration Guide at the time of this writing:
@@ -2533,11 +2528,17 @@ document. If writing to AMQP or Kafka brokers compiling against RabbitMQ or
 Kafka libraries is required; read more in respectively the "Running the
 RabbitMQ/AMQP plugin" or "Running the Kafka plugin" sections of this document.
 
-Data can be optionally consumed from a ZeroMQ queue, for example to have a
-pre-processor taking care of the GPB (Protobuf or Google Protocol Buffers) 
-de-marshalling and conversion to JSON; read more about (compiling) ZeroMQ in
-the "Internal buffering and queueing" section of this document; also read more
-about gRPC support and GPB de-marshalling in telemetry/README.telemetry .
+By defining telemetry_daemon_grpc_collector_conf, Streaming Telemetry data can
+be optionally consumed via a thread that takes care of gRPC and GPB (Protobuf,
+or Google Protocol Buffers) de-marshalling and conversion to JSON; the thread
+leverages https://github.com/network-analytics/mdt-dialout-collector as a
+library; the mdt-dialout-collector GitHub repository also says how to build
+the stack of dependencies in order to successfully collect gRPC / GPB data.
+The gRPC thread can be configured via telemetry_daemon_grpc_collector_conf,
+read more in CONFIG-KEYS. Data delivery into the main pmtelemetryd thread is
+done via ZeroMQ, read more about (compiling) ZeroMQ in the "Internal buffering
+and queueing" section of this document; also read more on the topic in the
+docs/README.telemetry document.
 
 From a configuration standpoint both the thread (ie. telemetry configured part
 of nfacctd) and the daemon (pmtelemetryd) are configured the same way except the
@@ -2578,8 +2579,8 @@ telemetry_dump_latest_file: /path/to/spool/telemetry-dump-$peer_src_ip.latest
 telemetry_dump_refresh_time: 60
 
 Following is a config example to receive JSON-formatted telemetry data from a
-pre-processor over a ZeroMQ queue (see telemetry/README.telemetry for further 
-info, ie. gRPC support and GPB de-marshalling):
+pre-processor over a ZeroMQ queue (see docs/README.telemetry for further info,
+ie. gRPC support and GPB de-marshalling):
 
 ! Telemetry thread configuration
 ! telemetry_daemon: true

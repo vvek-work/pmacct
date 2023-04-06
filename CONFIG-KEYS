@@ -49,19 +49,19 @@ DESC:		Daemonizes the process (default: false).
 KEY:		aggregate (-c)
 VALUES:		[ src_mac, dst_mac, vlan, in_vlan, out_vlan, cos, etype, src_host, dst_host,
 		 src_net, dst_net, src_mask, dst_mask, src_as, dst_as, src_port, dst_port,
-		 tos, proto, none, sum_mac, sum_host, sum_net, sum_as, sum_port, flows, tag,
-		 tag2, label, class, tcpflags, in_iface, out_iface, std_comm, ext_comm, lrg_comm,
-		 as_path, peer_src_ip, peer_dst_ip, peer_src_as, peer_dst_as, local_pref,
-		 med, dst_roa, src_std_comm, src_ext_comm, src_lrg_comm, src_as_path,
+		 tos, proto, none, sum_mac, sum_host, sum_net, sum_as, sum_port, flows,
+		 flow_label, tag, tag2, label, class, tcpflags, in_iface, out_iface, std_comm,
+		 ext_comm, lrg_comm, as_path, peer_src_ip, peer_dst_ip, peer_src_as, peer_dst_as,
+		 local_pref, med, dst_roa, src_std_comm, src_ext_comm, src_lrg_comm, src_as_path,
 		 src_local_pref, src_med, src_roa, mpls_vpn_rd, mpls_pw_id, mpls_label_top,
 		 mpls_label_bottom, mpls_label_stack, sampling_rate, sampling_direction,
 		 src_host_country, dst_host_country, src_host_pocode, dst_host_pocode,
 		 src_host_coords, dst_host_coords, nat_event, fw_event, post_nat_src_host,
 		 post_nat_dst_host, post_nat_src_port, post_nat_dst_port, tunnel_src_mac,
 		 tunnel_dst_mac, tunnel_src_host, tunnel_dst_host, tunnel_proto, tunnel_tos,
-		 tunnel_src_port, tunnel_dst_port, tunnel_tcpflags, fwd_status, vxlan,
-		 timestamp_start, timestamp_end, timestamp_arrival, timestamp_export,
-		 export_proto_seqno, export_proto_version, export_proto_sysid,
+		 tunnel_src_port, tunnel_dst_port, tunnel_tcpflags, tunnel_flow_label,
+		 fwd_status, vxlan, timestamp_start, timestamp_end, timestamp_arrival,
+		 timestamp_export, export_proto_seqno, export_proto_version, export_proto_sysid,
 		 srv6_seg_ipv6_list ]
 FOREWORDS:	Individual IP packets are uniquely identified by their header field values (a
 		rather large set of primitives!). Same applies to uni-directional IP flows, as
@@ -188,7 +188,9 @@ VALUES:		[ true | false ]
 DESC:		By default, Ethernet frames with unknown EtherTypes for which pmacct has not
 		implemented decoding support are ignored by the aggregation engine. Enabling this
 		option allows such frames to be aggregated by the available Ethernet L2 header
-		fields ('src_mac', 'dst_mac', 'vlan', 'cos', 'etype').
+		fields ('src_mac', 'dst_mac', 'vlan', 'cos', 'etype'). This is currently
+		supported in pmacctd and uacctd; while it only makes ARP packets pass through
+		in sfacctd.
 DEFAULT:	false
 
 KEY:		dtls_path [GLOBAL]
@@ -1347,10 +1349,10 @@ DESC:		Enables historical accounting by placing accounted data into configurable
 		the time-bin was touched) fields. The supplied value defines the time slot length during
 		which counters are accumulated. See also *_history_roundoff'. In nfacctd, where a flow
 		can span across multiple time-bins, flow counters can be pro-rated (seconds timestamp
-		resolution) over involved the time-bins by setting nfacctd_pro_rating to true.
-		The end net effect of this directive is close to time slots in a RRD file. Examples of
-		valid values are: '300s' or '5m' - five minutes, '3600s' or '1h' - one hour, '14400s' or
-		'4h' - four hours, '86400s' or '1d' - one day, '1w' - one week, '1M' - one month).
+		resolution) over involved the time-bins by setting nfacctd_pro_rating to true. 
+		The end net effect of this directive is the same as time slots in a RRD file. Examples
+		of of values are: '300s' or '5m' - five minutes, '3600s' or '1h' - one hour, '14400s'
+		or '4h' - four hours, '86400s' or '1d' - one day, '1w' - one week, '1M' - one month).
 DEFAULT:	none
 
 KEY:            [ sql_history_offset | print_history_offset | amqp_history_offset | kafka_history_offset ]
@@ -1364,13 +1366,13 @@ KEY:		[ sql_history_roundoff | print_history_roundoff | amqp_history_roundoff |
 VALUES		[m,h,d,w,M]
 DESC:		Enables alignment of minutes (m), hours (h), days of month (d), weeks (w) and months (M)
 		in print (to print_refresh_time) and SQL plugins (to sql_history and sql_refresh_time).
-		Suppose you go with 'sql_history: 1h', 'sql_history_roundoff: m' and it's 6:34pm. Rounding
-		off minutes gives you an hourly timeslot (1h) starting at 6:00pm; so, subsequent ones will
-		start at 7:00pm, 8:00pm, etc. Now, you go with 'sql_history: 5m', 'sql_history_roundoff: m'
-		and it's 6:37pm. Rounding off minutes will result in a first slot starting at 6:35pm; next
-		slot will start at 6:40pm, and then every 5 minutes (6:45pm ... 7:00pm, etc.). 'w' and 'd'
-		are mutually exclusive, that is: you can either reset the date to last Sunday or reset the
-		date to the first day of the month. 
+		For example, 'sql_history: 1h', 'sql_history_roundoff: m' and it's 6:34pm. Rounding off
+		minutes makes the hourly timeslot (1h) starting at 6:00pm; subsequent ones will start at
+		7:00pm, 8:00pm, etc. For example again, 'sql_history: 5m', 'sql_history_roundoff: m' and
+		it's 6:37pm. Rounding off minutes will result in a first slot starting at 6:35pm; next
+		slot will start at 6:40pm, and then every 5 minutes (6:45pm ... 7:00pm, etc.). 'w' and
+		'd' are mutually exclusive, that is, it is possible to either reset the date to last
+		Sunday or reset the date to the first day of the month. Seconds are aligned by default. 
 DEFAULT:	none
 
 KEY:            sql_recovery_backup_host
@@ -2082,6 +2084,14 @@ DESC:		Full pathname to a file containing specific tags for data. For all daemon
 		a SIGUSR2 signal (ie. "killall -USR2 nfacctd").
 DEFAULT:	none
 
+KEY:		pre_tag_map_dont_recirculate
+VALUES:		[ true | false ]
+DESC:		By default pre_tag_map entries without an 'ip' key specified are inserted in both v4 and
+		v6 maps, so-called recirculation (from one entry, two are actually created in the in-mem
+		structures), ensuring correctess of computed results. If a map does not include any v6
+		'ip' keys and the environment is v4-only, recirculation can be safely disabled by setting
+		this knob to true, hence yelding memory savings. 
+
 KEY:		maps_entries
 DESC:		Defines the maximum number of entries a map can contain (ie. pre_tag_map and all directives
 		with the 'MAP' flag in this document). The default value is suitable for most scenarios,
@@ -2540,6 +2550,15 @@ DESC:		Makes the BGP/BMP daemon listen to a port different from the standard por
 		to a presentation of the SO_REUSEPORT feature. To enable SO_REUSEPORT on a Linux system
 		supporting it 'sysctl net.core.allow_reuseport=1'.
 DEFAULT:	bgp_daemon_port: 179; bmp_daemon_port: 1790
+
+KEY:		[ bgp_daemon_ha | bmp_daemon_ha ] [GLOBAL]
+VALUES:		[ true | false ]
+DESC:		Enables the High Availability feature for the BGP/BMP daemon. The HA feature is a mechanism
+		that specifies whether a daemon should be active (i.e. normally forwarding all received
+		BMP/BGP messages) or stand-by (i.e. only enrich the local pmacct cache with information
+		in the BMP/BGP packets but then dropping them instead of forwarding them). Read more in
+		docs/README_BGP_BMP_HA.md .
+DEFAULT:	none
 
 KEY:		[ bgp_daemon_rp_ebpf_prog | bmp_daemon_rp_ebpf_prog ] [GLOBAL]
 DESC:		If SO_REUSEPORT is supported by the Operating System (read more about this feature at the
@@ -3260,11 +3279,11 @@ DEFAULT:        none
 
 KEY:		telemetry_daemon_port_tcp [GLOBAL]
 DESC:		Makes the Streaming Telemetry daemon, pmtelemetryd, or the Streaming Telemetry thread
-		listen on the specified TCP port. (see telemetry/README.telemetry for gRPC support).
-		If SO_REUSEPORT is supported by the Operating System, you can read more about it at
-		the config key telemetry_daemon_port_udp. Alternstively, for the sake of TCP sessions
-		balancing, a eBPF load-balancer, ie. telemetry_daemon_rp_ebpf_prog, can be defined in
-		order to explicitely wire peers to collectors.
+		listen on the specified TCP port. If SO_REUSEPORT is supported by the Operating System,
+		you can read more about it at the config key telemetry_daemon_port_udp. Alternatively,
+		for the sake of TCP sessions balancing, a eBPF load-balancer, ie.
+		telemetry_daemon_rp_ebpf_prog, can be defined in order to explicitely wire peers to
+		collectors.
 DEFAULT:	none
 
 KEY:		telemetry_daemon_ip [GLOBAL]
@@ -3298,6 +3317,17 @@ DESC:		If SO_REUSEPORT is supported by the Operating System (read more about thi
 		gap to avoid race conditions.
 DEFAULT:	none
 
+KEY:		telemetry_daemon_grpc_collector_conf
+DESC:		Enables Streaming Telemetry data collection via gRPC, mutual exclusive with other
+		telemetry collection methods (ie. TCP, UDP, UDP-Notif). Points to a file containing
+		the configuration of the gRPC collector thread. Read more, including instructions
+		on how to build the dependency stack and config examples and reference here:
+		https://github.com/network-analytics/mdt-dialout-collector . This feature requires
+		to configure pmacct for compiling with --enable-zmq and --enable-grpc-collector
+		flags; also --enable-grpc-collector requires to use a compiler that supports C++20
+		standard (ie. gcc >= 10).
+DEFAULT:	none
+
 KEY:		telemetry_daemon_decoder [GLOBAL]
 VALUES:		[ json | gpb | cisco_v0 | cisco_v1 ]
 DESC:		Sets the Streaming Telemetry data decoder to the specified type (over TCP or UDP
@@ -3305,7 +3335,7 @@ DESC:		Sets the Streaming Telemetry data decoder to the specified type (over TCP
 		to GPB compact / GPB KV data and this can be read with the 'cisco_v1' decoder; the
 		'cisco_v0' is mostly obsoleted at this point. GPB de-marshaling is not supported
 		and will produce an output JSON object with a base64'd encoding of the original GPB
-		(see telemetry/README.telemetry for gRPC support and GPB de-marshalling). 
+		(see docs/README.telemetry for gRPC support and GPB de-marshalling). 
 DEFAULT:	none
 
 KEY:            telemetry_daemon_max_peers [GLOBAL]
@@ -3335,33 +3365,6 @@ KEY:		telemetry_daemon_ipprec [GLOBAL]
 DESC:           Marks self-originated Streaming Telemetry messages with the supplied IP precedence value.
 		Applies to TCP sessions only.
 DEFAULT:        0
-
-KEY:		telemetry_daemon_zmq_address [GLOBAL]
-DESC:           Defines the ZeroMQ queue address (host and port) to connect to for consuming
-		JSON-encoded Streaming Telemetry data from. An example of the expected value is
-		"127.0.0.1:50000".
-DEFAULT:	none
-
-KEY:		telemetry_daemon_kafka_broker_host [GLOBAL]
-DESC:		Defines one or multiple, comma-separated, Kafka brokers to consume JSON-encoded
-		Streaming Telemetry data from. See kafka_broker_host for more info.
-DEFAULT:	none
-
-KEY:		telemetry_daemon_kafka_broker_port [GLOBAL]
-DESC:		Defines the Kafka broker port to consume JSON-encoded Streaming Telemetry data
-		from. See kafka_broker_host for more info.
-DEFAULT:	9092
-
-KEY:            telemetry_daemon_kafka_config_file [GLOBAL]
-DESC:           Full pathname to a file containing directives to configure librdkafka to consume
-		JSON-encoded Streaming Telemetry data from. See kafka_config_file for more info.
-DEFAULT:        none
-
-KEY:            telemetry_daemon_kafka_topic [GLOBAL]
-DESC:           Name of the Kafka topic to consume JSON-encoded Streaming Telemetry data from. No
-		variables are supported for dynamic naming of the topic. See kafka_topic for more
-		info.
-DEFAULT:        none
 
 KEY:		telemetry_daemon_udp_notif_ip [GLOBAL]
 DESC:		Defines the IP address to listen to for UDP-Notif, a proposed standard at IETF

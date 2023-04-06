@@ -1,6 +1,6 @@
 /*
     pmacct (Promiscuous mode IP Accounting package)
-    pmacct is Copyright (C) 2003-2022 by Paolo Lucente
+    pmacct is Copyright (C) 2003-2023 by Paolo Lucente
 */
 
 /*
@@ -438,11 +438,12 @@ void load_id_file(int acct_type, char *filename, struct id_table *t, struct plug
 		      memcpy(&recirc_e, &tmp.e[tmp.num], sizeof(struct id_entry));
 
 		      /*
-			If indexing is enabled and no address family is specified for 'ip'
-			(ie. 'ip' is likely not specified), we will not include it as part
-			of the index hash serializer anyway; we can skip recirculation.
+			Recirculate by default in order to ensure correctness of maps;
+			if this can be skipped, ie. v4-only or no-ip-only map, then the
+			'pre_tag_map_dont_recirculate' config knob can be used to save
+			memory.
 		      */
-		      if (!config.maps_index) {
+		      if (!config.pre_tag_map_dont_recirculate) {
 			recirculate = TRUE;
 		      }
 		    }
@@ -471,7 +472,12 @@ void load_id_file(int acct_type, char *filename, struct id_table *t, struct plug
                   tmp.num++;
 
 		  if (recirculate) {
-		    if (tmp.num < map_entries) goto recirculate_ipv6;
+		    if (tmp.num < map_entries) {
+		      tmp.e[tmp.num].key.agent_ip.a.family = FALSE;
+		      tmp.e[tmp.num].key.agent_mask.family = FALSE;
+
+		      goto recirculate_ipv6;
+		    }
 		  }
                 }
 	        /* if any required field is missing and other errors have been signalled
@@ -653,8 +659,10 @@ void load_id_file(int acct_type, char *filename, struct id_table *t, struct plug
 
 	  /* honouring reserved labels (ie. "next"). Then resolving unknown labels */
 	  if (!strcmp(ptr->jeq.label, "next")) {
-	    ptr->jeq.ptr = ptr+1;
-	    label_solved = TRUE;
+	    if (x < (t->ipv4_num - 1)) {
+	      ptr->jeq.ptr = ptr+1;
+	      label_solved = TRUE;
+	    }
 	  }
 	  else {
             int ret;
@@ -1071,8 +1079,10 @@ pt_bitmap_t pretag_index_build_bitmap(struct id_entry *ptr, int acct_type)
   if (idx_bmap & PRETAG_SET_TAG2) idx_bmap ^= PRETAG_SET_TAG2;
   if (idx_bmap & PRETAG_SET_LABEL) idx_bmap ^= PRETAG_SET_LABEL;
 
-  /* 3) handle the case of catch-all rule */
-  if (!idx_bmap) idx_bmap = PRETAG_NULL;
+  /* 3) if 'ip' key is not defined, still define the address family (AF)
+     so to be memory-savvy and avoid creating duplicate entries in case
+     of v4/v6 recirculation */
+  if (!(idx_bmap & PRETAG_IP)) idx_bmap |= PRETAG_IP_AF;
 
   return idx_bmap;
 }

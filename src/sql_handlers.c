@@ -1,6 +1,6 @@
 /*
     pmacct (Promiscuous mode IP Accounting package)
-    pmacct is Copyright (C) 2003-2022 by Paolo Lucente
+    pmacct is Copyright (C) 2003-2023 by Paolo Lucente
 */
 
 /*
@@ -343,6 +343,14 @@ void count_fwd_status_handler(const struct db_cache *cache_elem, struct insert_d
   *ptr_values += strlen(*ptr_values);
 }
 
+void count_flow_label_handler(const struct db_cache *cache_elem, struct insert_data *idata, int num, char **ptr_values, char **ptr_where)
+{
+  snprintf(*ptr_where, SPACELEFT(where_clause), where[num].string, cache_elem->primitives.flow_label);
+  snprintf(*ptr_values, SPACELEFT(values_clause), values[num].string, cache_elem->primitives.flow_label);
+  *ptr_where += strlen(*ptr_where);
+  *ptr_values += strlen(*ptr_values);
+}
+
 void count_mpls_label_top_handler(const struct db_cache *cache_elem, struct insert_data *idata, int num, char **ptr_values, char **ptr_where)
 {
   snprintf(*ptr_where, SPACELEFT(where_clause), where[num].string, cache_elem->pmpls->mpls_label_top);
@@ -374,6 +382,30 @@ void count_mpls_label_stack_handler(const struct db_cache *cache_elem, struct in
 
   snprintf(*ptr_where, SPACELEFT(where_clause), where[num].string, label_stack);
   snprintf(*ptr_values, SPACELEFT(values_clause), values[num].string, label_stack);
+  *ptr_where += strlen(*ptr_where);
+  *ptr_values += strlen(*ptr_values);
+}
+
+void count_path_delay_avg_usec_handler(const struct db_cache *cache_elem, struct insert_data *idata, int num, char **ptr_values, char **ptr_where)
+{
+  snprintf(*ptr_where, SPACELEFT(where_clause), where[num].string, cache_elem->pmpls->path_delay_avg_usec);
+  snprintf(*ptr_values, SPACELEFT(values_clause), values[num].string, cache_elem->pmpls->path_delay_avg_usec);
+  *ptr_where += strlen(*ptr_where);
+  *ptr_values += strlen(*ptr_values);
+}
+
+void count_path_delay_min_usec_handler(const struct db_cache *cache_elem, struct insert_data *idata, int num, char **ptr_values, char **ptr_where)
+{
+  snprintf(*ptr_where, SPACELEFT(where_clause), where[num].string, cache_elem->pmpls->path_delay_min_usec);
+  snprintf(*ptr_values, SPACELEFT(values_clause), values[num].string, cache_elem->pmpls->path_delay_min_usec);
+  *ptr_where += strlen(*ptr_where);
+  *ptr_values += strlen(*ptr_values);
+}
+
+void count_path_delay_max_usec_handler(const struct db_cache *cache_elem, struct insert_data *idata, int num, char **ptr_values, char **ptr_where)
+{
+  snprintf(*ptr_where, SPACELEFT(where_clause), where[num].string, cache_elem->pmpls->path_delay_max_usec);
+  snprintf(*ptr_values, SPACELEFT(values_clause), values[num].string, cache_elem->pmpls->path_delay_max_usec);
   *ptr_where += strlen(*ptr_where);
   *ptr_values += strlen(*ptr_values);
 }
@@ -473,6 +505,14 @@ void count_tunnel_dst_port_handler(const struct db_cache *cache_elem, struct ins
 void count_tunnel_tcpflags_handler(const struct db_cache *cache_elem, struct insert_data *idata, int num, char **ptr_values, char **ptr_where)
 {
   snprintf(*ptr_values, SPACELEFT(values_clause), values[num].string, cache_elem->tunnel_tcp_flags);
+  *ptr_values += strlen(*ptr_values);
+}
+
+void count_tunnel_flow_label_handler(const struct db_cache *cache_elem, struct insert_data *idata, int num, char **ptr_values, char **ptr_where)
+{
+  snprintf(*ptr_where, SPACELEFT(where_clause), where[num].string, cache_elem->ptun->tunnel_flow_label);
+  snprintf(*ptr_values, SPACELEFT(values_clause), values[num].string, cache_elem->ptun->tunnel_flow_label);
+  *ptr_where += strlen(*ptr_where);
   *ptr_values += strlen(*ptr_values);
 }
 

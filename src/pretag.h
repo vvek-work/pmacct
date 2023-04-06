@@ -78,6 +78,7 @@
 #define PRETAG_IS_MULTICAST		0x0000020000000000ULL
 #define PRETAG_IS_NSEL			0x0000040000000000ULL
 #define PRETAG_IS_NEL			0x0000080000000000ULL
+#define PRETAG_IP_AF			0x0000100000000000ULL
 /* ... */
 #define PRETAG_NULL			0x8000000000000000ULL
 
@@ -205,7 +206,6 @@ struct id_entry_key {
   pt_uint32_t mpls_pw_id;
   pt_uint8_t fwd_status;
   struct bpf_program filter;
-  pt_uint8_t null;
 };
 
 struct id_entry {

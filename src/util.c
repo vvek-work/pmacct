@@ -1,6 +1,6 @@
 /*
     pmacct (Promiscuous mode IP Accounting package)
-    pmacct is Copyright (C) 2003-2022 by Paolo Lucente
+    pmacct is Copyright (C) 2003-2023 by Paolo Lucente
 */
 
 /*
@@ -1499,7 +1499,7 @@ void lower_string(char *string)
   }
 }
 
-void evaluate_sums(u_int64_t *wtc, u_int64_t *wtc_2, char *name, char *type)
+void evaluate_sums(u_int64_t *wtc, u_int64_t *wtc_2, u_int64_t *wtc_3, char *name, char *type)
 {
   int tag = FALSE;
   int tag2 = FALSE;
@@ -2280,6 +2280,9 @@ void version_daemon(int acct_type, char *header)
 #endif
 #ifdef WITH_UNYTE_UDP_NOTIF
   printf("unyte-udp-notif\n");
+#endif
+#ifdef WITH_GRPC_COLLECTOR
+  printf("mdt-dialout-collector\n");
 #endif
 #ifdef WITH_NDPI
   printf("nDPI %s\n", ndpi_revision());

@@ -1,6 +1,6 @@
 /*
     pmacct (Promiscuous mode IP Accounting package)
-    pmacct is Copyright (C) 2003-2022 by Paolo Lucente
+    pmacct is Copyright (C) 2003-2023 by Paolo Lucente
 */
 
 /*
@@ -38,7 +38,7 @@
 compose_json_handler cjhandler[N_PRIMITIVES];
 
 /* Functions */
-void compose_json(u_int64_t wtc, u_int64_t wtc_2)
+void compose_json(u_int64_t wtc, u_int64_t wtc_2, u_int64_t wtc_3)
 {
   int idx = 0;
 
@@ -352,6 +352,21 @@ void compose_json(u_int64_t wtc, u_int64_t wtc_2)
     idx++;
   }
 
+  if (wtc_2 & COUNT_PATH_DELAY_AVG_USEC) {
+    cjhandler[idx] = compose_json_path_delay_avg_usec;
+    idx++;
+  }
+
+  if (wtc_2 & COUNT_PATH_DELAY_MIN_USEC) {
+    cjhandler[idx] = compose_json_path_delay_min_usec;
+    idx++;
+  }
+
+  if (wtc_2 & COUNT_PATH_DELAY_MAX_USEC) {
+    cjhandler[idx] = compose_json_path_delay_max_usec;
+    idx++;
+  }
+
   if (wtc & COUNT_IP_PROTO) {
     cjhandler[idx] = compose_json_proto;
     idx++;
@@ -359,6 +374,11 @@ void compose_json(u_int64_t wtc, u_int64_t wtc_2)
 
   if (wtc & COUNT_IP_TOS) {
     cjhandler[idx] = compose_json_tos;
+    idx++;
+  }
+
+  if (wtc_3 & COUNT_FLOW_LABEL) {
+    cjhandler[idx] = compose_json_flow_label;
     idx++;
   }
 
@@ -439,6 +459,11 @@ void compose_json(u_int64_t wtc, u_int64_t wtc_2)
     
   if (wtc_2 & COUNT_TUNNEL_IP_TOS) {
     cjhandler[idx] = compose_json_tunnel_tos;
+    idx++;
+  }
+
+  if (wtc_3 & COUNT_TUNNEL_FLOW_LABEL) {
+    cjhandler[idx] = compose_json_tunnel_flow_label;
     idx++;
   }
 
@@ -1015,6 +1040,11 @@ void compose_json_tos(json_t *obj, struct chained_cache *cc)
   json_object_set_new_nocheck(obj, "tos", json_integer((json_int_t)cc->primitives.tos));
 }
 
+void compose_json_flow_label(json_t *obj, struct chained_cache *cc)
+{
+  json_object_set_new_nocheck(obj, "flow_label", json_integer((json_int_t)cc->primitives.flow_label));
+}
+
 void compose_json_sampling_rate(json_t *obj, struct chained_cache *cc)
 {
   json_object_set_new_nocheck(obj, "sampling_rate", json_integer((json_int_t)cc->primitives.sampling_rate));
@@ -1113,6 +1143,11 @@ void compose_json_tunnel_proto(json_t *obj, struct chained_cache *cc)
 void compose_json_tunnel_tos(json_t *obj, struct chained_cache *cc)
 {
   json_object_set_new_nocheck(obj, "tunnel_tos", json_integer((json_int_t)cc->ptun->tunnel_tos));
+}
+
+void compose_json_tunnel_flow_label(json_t *obj, struct chained_cache *cc)
+{
+  json_object_set_new_nocheck(obj, "tunnel_flow_label", json_integer((json_int_t)cc->ptun->tunnel_flow_label));
 }
 
 void compose_json_tunnel_src_port(json_t *obj, struct chained_cache *cc)
@@ -1541,4 +1576,19 @@ json_t *compose_srv6_segment_ipv6_list_json_data(struct host_addr *ipv6_list, in
   }
 
   return root;
+}
+
+void compose_json_path_delay_avg_usec(json_t *obj, struct chained_cache *cc)
+{
+  json_object_set_new_nocheck(obj, "path_delay_avg_usec", json_integer((json_int_t)cc->pmpls->path_delay_avg_usec));
+}
+
+void compose_json_path_delay_min_usec(json_t *obj, struct chained_cache *cc)
+{
+  json_object_set_new_nocheck(obj, "path_delay_min_usec", json_integer((json_int_t)cc->pmpls->path_delay_min_usec));
+}
+
+void compose_json_path_delay_max_usec(json_t *obj, struct chained_cache *cc)
+{
+  json_object_set_new_nocheck(obj, "path_delay_max_usec", json_integer((json_int_t)cc->pmpls->path_delay_max_usec));
 }

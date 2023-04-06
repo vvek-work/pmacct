@@ -1,6 +1,6 @@
 /*  
     pmacct (Promiscuous mode IP Accounting package)
-    pmacct is Copyright (C) 2003-2022 by Paolo Lucente
+    pmacct is Copyright (C) 2003-2023 by Paolo Lucente
 */
 
 /*
@@ -181,6 +181,14 @@ void PM_sigint_handler(int signum)
     }
   }
 
+  if (config.acct_type == ACCT_PMTELE) {
+    if (config.telemetry_grpc_collector_conf) {
+#if defined WITH_ZMQ
+      p_zmq_remove_ipc_file(config.telemetry_grpc_collector_socket);
+#endif
+    }
+  }
+
   if (config.pidfile) remove_pid_file(config.pidfile);
 
   if (config.propagate_signals) signal_kittens(signum, TRUE);
@@ -241,35 +249,3 @@ void reload_maps(int signum)
     signal_kittens(signum, TRUE);
   }
 }
-
-#ifdef WITH_REDIS
-void pm_ha_re_generate_timestamp(int signum)
-{
-  if (config.redis_host)
-  {
-    bmp_ha_struct.regenerate_timestamp_flag = true;
-    Log(LOG_INFO, "INFO(%s/%s) : Timestamp reset\n", config.name, config.type);
-  }
-}
-
-void pm_ha_set_to_active(int signum)
-{
-  bmp_ha_struct.set_to_standby_flag = false;
-  bmp_ha_struct.set_to_active_flag = true;
-  Log(LOG_INFO, "INFO(%s/%s) : Setting %s as active\n", config.name, config.type, config.name);
-}
-
-void pm_ha_set_to_standby(int signum)
-{
-  bmp_ha_struct.set_to_standby_flag = true;
-  bmp_ha_struct.set_to_active_flag = false;
-  Log(LOG_INFO, "INFO(%s/%s) : Setting %s as standby\n", config.name, config.type, config.name);
-}
-
-void pm_ha_set_to_normal(int signum)
-{
-  bmp_ha_struct.set_to_standby_flag = false;
-  bmp_ha_struct.set_to_active_flag = false;
-  Log(LOG_INFO, "INFO(%s/%s) : Setting %s back to normal state\n", config.name, config.type, config.name);
-}
-#endif

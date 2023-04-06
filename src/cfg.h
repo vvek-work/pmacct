@@ -1,6 +1,6 @@
 /*
     pmacct (Promiscuous mode IP Accounting package)
-    pmacct is Copyright (C) 2003-2022 by Paolo Lucente
+    pmacct is Copyright (C) 2003-2023 by Paolo Lucente
 */
 
 /*
@@ -26,9 +26,9 @@
 
 /* defines */
 #define CFG_LINE_LEN(x) (SRVBUFLEN-strlen(x))
-#define MAX_CUSTOM_PRIMITIVES		64
-#define MAX_CUSTOM_PRIMITIVE_NAMELEN	64
-#define MAX_CUSTOM_PRIMITIVE_PD_PTRS	8
+#define MAX_CUSTOM_PRIMITIVES           64
+#define MAX_CUSTOM_PRIMITIVE_NAMELEN    64
+#define MAX_CUSTOM_PRIMITIVE_PD_PTRS    8
 
 /* structures */
 struct _dictionary_line {
@@ -75,10 +75,12 @@ struct custom_primitives_ptrs {
 };
 
 struct configuration {
-  pm_cfgreg_t what_to_count;	/* first registry */
-  pm_cfgreg_t what_to_count_2;	/* second registry */
+  pm_cfgreg_t what_to_count;    /* first registry */
+  pm_cfgreg_t what_to_count_2;  /* second registry */
+  pm_cfgreg_t what_to_count_3;  /* third registry */
   pm_cfgreg_t nfprobe_what_to_count;
   pm_cfgreg_t nfprobe_what_to_count_2;
+  pm_cfgreg_t nfprobe_what_to_count_3;
   char *aggregate_primitives;
   int aggregate_unknown_etype;
   struct custom_primitives_ptrs cpptrs;
@@ -97,8 +99,8 @@ struct configuration {
   int redis_db;
   int sock;
   int bgp_sock;
-  int acct_type; 
-  int data_type; 
+  int acct_type;
+  int data_type;
   int pipe_homegrown;
   u_int64_t pipe_size;
   u_int64_t buffer_size;
@@ -262,12 +264,9 @@ struct configuration {
   int telemetry_udp_notif_ipv6_only;
   int telemetry_udp_notif_nmsgs;
   char *telemetry_udp_notif_rp_ebpf_prog;
+  char *telemetry_grpc_collector_socket;
+  char *telemetry_grpc_collector_conf;
   int telemetry_ipv6_only;
-  char *telemetry_zmq_address;
-  char *telemetry_kafka_broker_host;
-  int telemetry_kafka_broker_port;
-  char *telemetry_kafka_topic;
-  char *telemetry_kafka_config_file;
   char *telemetry_decoder;
   int telemetry_decoder_id;
   int telemetry_max_peers;
@@ -538,7 +537,7 @@ struct configuration {
   char *logfile;
   int loglevel;
   FILE *logfile_fd;
-  char *pidfile; 
+  char *pidfile;
   int networks_mask;
   char *networks_file;
   int networks_file_filter;
@@ -564,6 +563,7 @@ struct configuration {
   int maps_entries;
   int maps_row_len;
   char *pre_tag_map;
+  int pre_tag_map_dont_recirculate;
   struct id_table ptm;
   int ptm_alloc;
   int ptm_global;
@@ -632,7 +632,7 @@ struct configuration {
   int tmp_bgp_daemon_origin_type_int;
   int tmp_telemetry_udp_notif_legacy;
   int tmp_telemetry_decode_cisco_v1_json_string;
-  int tmp_bmp_daemon_ha;
+  int bgp_bmp_daemon_ha;
   size_t thread_stack;
   char *rpki_roas_file;
   char *rpki_rtr_cache;
@@ -642,7 +642,7 @@ struct configuration {
   int bmp_daemon_parse_proxy_header;
 };
 
-/* prototypes */ 
+/* prototypes */
 extern void evaluate_configuration(char *, int);
 extern int parse_configuration_file(char *);
 extern int parse_plugin_names(char *, int, int);
