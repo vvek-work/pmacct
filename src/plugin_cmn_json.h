@@ -1,6 +1,6 @@
 /*
     pmacct (Promiscuous mode IP Accounting package)
-    pmacct is Copyright (C) 2003-2022 by Paolo Lucente
+    pmacct is Copyright (C) 2003-2023 by Paolo Lucente
 */
 
 /*
@@ -108,6 +108,7 @@ extern void compose_json_fwd_status(json_t *, struct chained_cache *);
 extern void compose_json_mpls_label_stack(json_t *, struct chained_cache *);
 extern void compose_json_proto(json_t *, struct chained_cache *);
 extern void compose_json_tos(json_t *, struct chained_cache *);
+extern void compose_json_flow_label(json_t *, struct chained_cache *);
 extern void compose_json_sampling_rate(json_t *, struct chained_cache *);
 extern void compose_json_sampling_direction(json_t *, struct chained_cache *);
 extern void compose_json_post_nat_src_host(json_t *, struct chained_cache *);
@@ -124,6 +125,7 @@ extern void compose_json_tunnel_src_host(json_t *, struct chained_cache *);
 extern void compose_json_tunnel_dst_host(json_t *, struct chained_cache *);
 extern void compose_json_tunnel_proto(json_t *, struct chained_cache *);
 extern void compose_json_tunnel_tos(json_t *, struct chained_cache *);
+extern void compose_json_tunnel_flow_label(json_t *, struct chained_cache *);
 extern void compose_json_tunnel_src_port(json_t *, struct chained_cache *);
 extern void compose_json_tunnel_dst_port(json_t *, struct chained_cache *);
 extern void compose_json_tunnel_tcp_flags(json_t *, struct chained_cache *);
@@ -140,8 +142,12 @@ extern void compose_json_custom_primitives(json_t *, struct chained_cache *);
 extern void compose_json_history(json_t *, struct chained_cache *);
 extern void compose_json_flows(json_t *, struct chained_cache *);
 extern void compose_json_counters(json_t *, struct chained_cache *);
+extern void compose_json_path_delay_avg_usec(json_t *, struct chained_cache *);
+extern void compose_json_path_delay_min_usec(json_t *, struct chained_cache *);
+extern void compose_json_path_delay_max_usec(json_t *, struct chained_cache *);
+
 #endif
-extern void compose_json(u_int64_t, u_int64_t);
+extern void compose_json(u_int64_t, u_int64_t, u_int64_t);
 extern void *compose_purge_init_json(char *, pid_t);
 extern void *compose_purge_close_json(char *, pid_t, int, int, int);
 #endif //PLUGIN_CMN_JSON_H

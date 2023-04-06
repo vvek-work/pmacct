@@ -1,6 +1,6 @@
 /*
     pmacct (Promiscuous mode IP Accounting package)
-    pmacct is Copyright (C) 2003-2022 by Paolo Lucente
+    pmacct is Copyright (C) 2003-2023 by Paolo Lucente
 */
 
 /*
@@ -106,13 +106,13 @@ void print_plugin(int pipe_fd, struct configuration *cfgptr, void *ptr)
 
   if (config.print_output & PRINT_OUTPUT_JSON) {
 #ifdef WITH_JANSSON
-    compose_json(config.what_to_count, config.what_to_count_2);
+    compose_json(config.what_to_count, config.what_to_count_2, config.what_to_count_3);
 #endif
   }
   else if ((config.print_output & PRINT_OUTPUT_AVRO_BIN) ||
 	   (config.print_output & PRINT_OUTPUT_AVRO_JSON)) {
 #ifdef WITH_AVRO
-    p_avro_acct_schema = p_avro_schema_build_acct_data(config.what_to_count, config.what_to_count_2);
+    p_avro_acct_schema = p_avro_schema_build_acct_data(config.what_to_count, config.what_to_count_2, config.what_to_count_3);
     if (config.avro_schema_file) write_avro_schema_to_file(config.avro_schema_file, p_avro_acct_schema);
 #endif
   }
@@ -731,6 +731,7 @@ void P_cache_purge(struct chained_cache *queue[], int index, int safe_action)
         }
   
         if (config.what_to_count & COUNT_IP_TOS) fprintf(f, "%-3u    ", data->tos);
+        if (config.what_to_count_3 & COUNT_FLOW_LABEL) fprintf(f, "%-10u ", data->flow_label);
   
   #if defined WITH_GEOIP
         if (config.what_to_count_2 & COUNT_SRC_HOST_COUNTRY) fprintf(f, "%-5s       ", GeoIP_code_by_id(data->src_ip_country.id));
@@ -818,6 +819,7 @@ void P_cache_purge(struct chained_cache *queue[], int index, int safe_action)
 	}
 
 	if (config.what_to_count_2 & COUNT_TUNNEL_IP_TOS) fprintf(f, "%-3u         ", ptun->tunnel_tos);
+        if (config.what_to_count_3 & COUNT_TUNNEL_FLOW_LABEL) fprintf(f, "%-10u        ", ptun->tunnel_flow_label);
         if (config.what_to_count_2 & COUNT_TUNNEL_SRC_PORT) fprintf(f, "%-5u            ", ptun->tunnel_src_port);
         if (config.what_to_count_2 & COUNT_TUNNEL_DST_PORT) fprintf(f, "%-5u            ", ptun->tunnel_dst_port);
 	if (config.what_to_count_2 & COUNT_TUNNEL_TCPFLAGS) fprintf(f, "%-3u               ", queue[j]->tunnel_tcp_flags);
@@ -883,6 +885,10 @@ void P_cache_purge(struct chained_cache *queue[], int index, int safe_action)
         if (config.what_to_count_2 & COUNT_EXPORT_PROTO_SEQNO) fprintf(f, "%-18u  ", data->export_proto_seqno);
         if (config.what_to_count_2 & COUNT_EXPORT_PROTO_VERSION) fprintf(f, "%-20u  ", data->export_proto_version);
         if (config.what_to_count_2 & COUNT_EXPORT_PROTO_SYSID) fprintf(f, "%-18u  ", data->export_proto_sysid);
+
+        if (config.what_to_count_2 & COUNT_PATH_DELAY_AVG_USEC) fprintf(f, "%-19u  ", pmpls->path_delay_avg_usec);
+        if (config.what_to_count_2 & COUNT_PATH_DELAY_MIN_USEC) fprintf(f, "%-19u  ", pmpls->path_delay_min_usec);
+        if (config.what_to_count_2 & COUNT_PATH_DELAY_MAX_USEC) fprintf(f, "%-19u  ", pmpls->path_delay_max_usec);
 
         /* all custom primitives printed here */
         {
@@ -1130,6 +1136,7 @@ void P_cache_purge(struct chained_cache *queue[], int index, int safe_action)
         }
   
         if (config.what_to_count & COUNT_IP_TOS) fprintf(f, "%s%u", write_sep(sep, &count), data->tos);
+        if (config.what_to_count_3 & COUNT_FLOW_LABEL) fprintf(f, "%s%u", write_sep(sep, &count), data->flow_label);
   
   #if defined WITH_GEOIP
         if (config.what_to_count_2 & COUNT_SRC_HOST_COUNTRY) fprintf(f, "%s%s", write_sep(sep, &count), GeoIP_code_by_id(data->src_ip_country.id));
@@ -1211,6 +1218,7 @@ void P_cache_purge(struct chained_cache *queue[], int index, int safe_action)
 	}
 
 	if (config.what_to_count_2 & COUNT_TUNNEL_IP_TOS) fprintf(f, "%s%u", write_sep(sep, &count), ptun->tunnel_tos);
+        if (config.what_to_count_3 & COUNT_TUNNEL_FLOW_LABEL) fprintf(f, "%s%u", write_sep(sep, &count), ptun->tunnel_flow_label);
 	if (config.what_to_count_2 & COUNT_TUNNEL_SRC_PORT) fprintf(f, "%s%u", write_sep(sep, &count), ptun->tunnel_src_port);
         if (config.what_to_count_2 & COUNT_TUNNEL_DST_PORT) fprintf(f, "%s%u", write_sep(sep, &count), ptun->tunnel_dst_port);
         if (config.what_to_count_2 & COUNT_TUNNEL_TCPFLAGS) fprintf(f, "%s%u", write_sep(sep, &count), queue[j]->tunnel_tcp_flags);
@@ -1276,6 +1284,10 @@ void P_cache_purge(struct chained_cache *queue[], int index, int safe_action)
         if (config.what_to_count_2 & COUNT_EXPORT_PROTO_SEQNO) fprintf(f, "%s%u", write_sep(sep, &count), data->export_proto_seqno);
         if (config.what_to_count_2 & COUNT_EXPORT_PROTO_VERSION) fprintf(f, "%s%u", write_sep(sep, &count), data->export_proto_version);
         if (config.what_to_count_2 & COUNT_EXPORT_PROTO_SYSID) fprintf(f, "%s%u", write_sep(sep, &count), data->export_proto_sysid);
+
+        if (config.what_to_count_2 & COUNT_PATH_DELAY_AVG_USEC) fprintf(f, "%s%u", write_sep(sep, &count), pmpls->path_delay_avg_usec);
+        if (config.what_to_count_2 & COUNT_PATH_DELAY_MIN_USEC) fprintf(f, "%s%u", write_sep(sep, &count), pmpls->path_delay_min_usec);
+        if (config.what_to_count_2 & COUNT_PATH_DELAY_MAX_USEC) fprintf(f, "%s%u", write_sep(sep, &count), pmpls->path_delay_max_usec);
   
         /* all custom primitives printed here */
         {
@@ -1321,9 +1333,10 @@ void P_cache_purge(struct chained_cache *queue[], int index, int safe_action)
         avro_value_iface_t *p_avro_iface = avro_generic_class_from_schema(p_avro_acct_schema);
 
         avro_value_t p_avro_value = compose_avro_acct_data(config.what_to_count, config.what_to_count_2,
-			 queue[j]->flow_type, &queue[j]->primitives, pbgp, pnat, pmpls, ptun, pcust,
-			 pvlen, queue[j]->bytes_counter, queue[j]->packet_counter, queue[j]->flow_counter,
-			 queue[j]->tcp_flags, queue[j]->tunnel_tcp_flags, NULL, queue[j]->stitch, p_avro_iface);
+			 config.what_to_count_3, queue[j]->flow_type, &queue[j]->primitives, pbgp, pnat,
+			 pmpls, ptun, pcust, pvlen, queue[j]->bytes_counter, queue[j]->packet_counter,
+			 queue[j]->flow_counter, queue[j]->tcp_flags, queue[j]->tunnel_tcp_flags, NULL,
+			 queue[j]->stitch, p_avro_iface);
 
         if (config.sql_table) {
 	  if (config.print_output & PRINT_OUTPUT_AVRO_BIN) {
@@ -1477,6 +1490,7 @@ void P_write_stats_header_formatted(FILE *f, int is_event)
   if (config.what_to_count & COUNT_TCPFLAGS) fprintf(f, "TCP_FLAGS  ");
   if (config.what_to_count & COUNT_IP_PROTO) fprintf(f, "PROTOCOL    ");
   if (config.what_to_count & COUNT_IP_TOS) fprintf(f, "TOS    ");
+  if (config.what_to_count_3 & COUNT_FLOW_LABEL) fprintf(f, "FLOW_LABEL ");
 #if defined (WITH_GEOIP) || defined (WITH_GEOIPV2)
   if (config.what_to_count_2 & COUNT_SRC_HOST_COUNTRY) fprintf(f, "SH_COUNTRY  ");
   if (config.what_to_count_2 & COUNT_DST_HOST_COUNTRY) fprintf(f, "DH_COUNTRY  ");
@@ -1510,6 +1524,7 @@ void P_write_stats_header_formatted(FILE *f, int is_event)
   if (config.what_to_count_2 & COUNT_TUNNEL_DST_HOST) fprintf(f, "TUNNEL_DST_IP                                  ");
   if (config.what_to_count_2 & COUNT_TUNNEL_IP_PROTO) fprintf(f, "TUNNEL_PROTOCOL  ");
   if (config.what_to_count_2 & COUNT_TUNNEL_IP_TOS) fprintf(f, "TUNNEL_TOS  ");
+  if (config.what_to_count_3 & COUNT_TUNNEL_FLOW_LABEL) fprintf(f, "TUNNEL_FLOW_LABEL ");
   if (config.what_to_count_2 & COUNT_TUNNEL_SRC_PORT) fprintf(f, "TUNNEL_SRC_PORT  "); 
   if (config.what_to_count_2 & COUNT_TUNNEL_DST_PORT) fprintf(f, "TUNNEL_DST_PORT  "); 
   if (config.what_to_count_2 & COUNT_TUNNEL_TCPFLAGS) fprintf(f, "TUNNEL_TCP_FLAGS  "); 
@@ -1525,6 +1540,9 @@ void P_write_stats_header_formatted(FILE *f, int is_event)
   if (config.what_to_count_2 & COUNT_EXPORT_PROTO_SEQNO) fprintf(f, "EXPORT_PROTO_SEQNO  ");
   if (config.what_to_count_2 & COUNT_EXPORT_PROTO_VERSION) fprintf(f, "EXPORT_PROTO_VERSION  ");
   if (config.what_to_count_2 & COUNT_EXPORT_PROTO_SYSID) fprintf(f, "EXPORT_PROTO_SYSID  ");
+  if (config.what_to_count_2 & COUNT_PATH_DELAY_AVG_USEC) fprintf(f, "PATH_DELAY_AVG_USEC  ");
+  if (config.what_to_count_2 & COUNT_PATH_DELAY_MIN_USEC) fprintf(f, "PATH_DELAY_MIN_USEC  ");
+  if (config.what_to_count_2 & COUNT_PATH_DELAY_MAX_USEC) fprintf(f, "PATH_DELAY_MAX_USEC  ");
 
   /* all custom primitives printed here */
   {
@@ -1607,6 +1625,7 @@ void P_write_stats_header_csv(FILE *f, int is_event)
   if (config.what_to_count & COUNT_TCPFLAGS) fprintf(f, "%sTCP_FLAGS", write_sep(sep, &count));
   if (config.what_to_count & COUNT_IP_PROTO) fprintf(f, "%sPROTOCOL", write_sep(sep, &count));
   if (config.what_to_count & COUNT_IP_TOS) fprintf(f, "%sTOS", write_sep(sep, &count));
+  if (config.what_to_count_3 & COUNT_FLOW_LABEL) fprintf(f, "%sFLOW_LABEL", write_sep(sep, &count));
 #if defined (WITH_GEOIP) || defined (WITH_GEOIPV2)
   if (config.what_to_count_2 & COUNT_SRC_HOST_COUNTRY) fprintf(f, "%sSH_COUNTRY", write_sep(sep, &count));
   if (config.what_to_count_2 & COUNT_DST_HOST_COUNTRY) fprintf(f, "%sDH_COUNTRY", write_sep(sep, &count));
@@ -1641,6 +1660,7 @@ void P_write_stats_header_csv(FILE *f, int is_event)
   if (config.what_to_count_2 & COUNT_TUNNEL_DST_HOST) fprintf(f, "%sTUNNEL_DST_IP", write_sep(sep, &count));
   if (config.what_to_count_2 & COUNT_TUNNEL_IP_PROTO) fprintf(f, "%sTUNNEL_PROTOCOL", write_sep(sep, &count));
   if (config.what_to_count_2 & COUNT_TUNNEL_IP_TOS) fprintf(f, "%sTUNNEL_TOS", write_sep(sep, &count));
+  if (config.what_to_count_3 & COUNT_TUNNEL_FLOW_LABEL) fprintf(f, "%sTUNNEL_FLOW_LABEL", write_sep(sep, &count));
   if (config.what_to_count_2 & COUNT_TUNNEL_SRC_PORT) fprintf(f, "%sTUNNEL_SRC_PORT", write_sep(sep, &count));
   if (config.what_to_count_2 & COUNT_TUNNEL_DST_PORT) fprintf(f, "%sTUNNEL_DST_PORT", write_sep(sep, &count));
   if (config.what_to_count_2 & COUNT_TUNNEL_TCPFLAGS) fprintf(f, "%sTUNNEL_TCP_FLAGS", write_sep(sep, &count));
@@ -1656,6 +1676,9 @@ void P_write_stats_header_csv(FILE *f, int is_event)
   if (config.what_to_count_2 & COUNT_EXPORT_PROTO_SEQNO) fprintf(f, "%sEXPORT_PROTO_SEQNO", write_sep(sep, &count));
   if (config.what_to_count_2 & COUNT_EXPORT_PROTO_VERSION) fprintf(f, "%sEXPORT_PROTO_VERSION", write_sep(sep, &count));
   if (config.what_to_count_2 & COUNT_EXPORT_PROTO_SYSID) fprintf(f, "%sEXPORT_PROTO_SYSID", write_sep(sep, &count));
+  if (config.what_to_count_2 & COUNT_PATH_DELAY_AVG_USEC) fprintf(f, "%sPATH_DELAY_AVG_USEC", write_sep(sep, &count));
+  if (config.what_to_count_2 & COUNT_PATH_DELAY_MIN_USEC) fprintf(f, "%sPATH_DELAY_MIN_USEC", write_sep(sep, &count));
+  if (config.what_to_count_2 & COUNT_PATH_DELAY_MAX_USEC) fprintf(f, "%sPATH_DELAY_MAX_USEC", write_sep(sep, &count));
 
   /* all custom primitives printed here */
   { 

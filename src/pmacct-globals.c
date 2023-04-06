@@ -1,6 +1,6 @@
 /*  
     pmacct (Promiscuous mode IP Accounting package)
-    pmacct is Copyright (C) 2003-2021 by Paolo Lucente
+    pmacct is Copyright (C) 2003-2023 by Paolo Lucente
 */
 
 /*
@@ -47,12 +47,9 @@ struct pm_pcap_devices devices, bkp_devices;
 struct pm_pcap_interfaces pm_pcap_if_map, pm_bkp_pcap_if_map;
 struct pcap_stat ps;
 struct sigaction sighandler_action;
+int bmp_bgp_forwarding = TRUE; /* flag used by BGP-BMP-HA feature if enabled */
 
 int protocols_number;
-
-/* XXX: to be moved away: tmp_bmp_daemon_ha stuff */
-struct bmp_ha bmp_ha_struct;
-cdada_queue_t *bmp_ha_data_queue;
 
 u_int32_t PdataSz, ChBufHdrSz, CharPtrSz, CounterSz, HostAddrSz;
 u_int32_t PpayloadSz, PextrasSz, PmsgSz, PvhdrSz, PtLabelTSz;

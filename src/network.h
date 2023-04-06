@@ -1,6 +1,6 @@
 /*  
     pmacct (Promiscuous mode IP Accounting package)
-    pmacct is Copyright (C) 2003-2022 by Paolo Lucente
+    pmacct is Copyright (C) 2003-2023 by Paolo Lucente
 */
 
 /*
@@ -74,6 +74,7 @@ struct chdlc_header {
 
 /* Ethernet protocol ID's */
 #define ETHERTYPE_IP		0x0800          /* IP */
+#define ETHERTYPE_ARP		0x0806          /* ARP */
 #define ETHERTYPE_IPV6          0x86dd		/* IPv6 */
 #define ETHERTYPE_PPPOE         0x8864          /* pppoe (session stage) */
 #define ETHERTYPE_8021Q		0x8100          /* 802.1Q */
@@ -411,6 +412,7 @@ struct pkt_primitives {
   u_int16_t dst_port;
   u_int8_t tos;
   u_int8_t proto;
+  u_int32_t flow_label;
   u_int32_t ifindex_in;
   u_int32_t ifindex_out;
 #if defined (WITH_GEOIP) || defined (WITH_GEOIPV2)
@@ -584,6 +586,9 @@ struct pkt_nat_primitives {
 struct pkt_mpls_primitives {
   u_int32_t mpls_label_top;
   u_int32_t mpls_label_bottom;
+  u_int32_t path_delay_avg_usec;
+  u_int32_t path_delay_min_usec;
+  u_int32_t path_delay_max_usec;
 };
 
 struct pkt_tunnel_primitives {
@@ -592,6 +597,7 @@ struct pkt_tunnel_primitives {
   struct host_addr tunnel_src_ip;
   struct host_addr tunnel_dst_ip;
   u_int8_t tunnel_tos;
+  u_int32_t tunnel_flow_label;
   u_int8_t tunnel_proto;
   u_int16_t tunnel_src_port;
   u_int16_t tunnel_dst_port;

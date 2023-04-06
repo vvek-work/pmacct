@@ -1,6 +1,6 @@
 /*
     pmacct (Promiscuous mode IP Accounting package)
-    pmacct is Copyright (C) 2003-2022 by Paolo Lucente
+    pmacct is Copyright (C) 2003-2023 by Paolo Lucente
 */
 
 /*
@@ -91,6 +91,7 @@ extern void NF_peer_src_ip_handler(struct channels_list_entry *, struct packet_p
 extern void NF_peer_dst_ip_handler(struct channels_list_entry *, struct packet_ptrs *, char **);
 extern void NF_ip_tos_handler(struct channels_list_entry *, struct packet_ptrs *, char **);
 extern void NF_ip_proto_handler(struct channels_list_entry *, struct packet_ptrs *, char **);
+extern void NF_flow_label_handler(struct channels_list_entry *, struct packet_ptrs *, char **);
 extern void NF_tcp_flags_handler(struct channels_list_entry *, struct packet_ptrs *, char **);
 extern void NF_fwd_status_handler(struct channels_list_entry *, struct packet_ptrs *, char **);
 extern void NF_counters_handler(struct channels_list_entry *, struct packet_ptrs *, char **);
@@ -112,16 +113,27 @@ extern void NF_fw_event_handler(struct channels_list_entry *, struct packet_ptrs
 extern void NF_mpls_label_stack_handler(struct channels_list_entry *, struct packet_ptrs *, char **);
 extern void NF_mpls_label_top_handler(struct channels_list_entry *, struct packet_ptrs *, char **);
 extern void NF_mpls_label_bottom_handler(struct channels_list_entry *, struct packet_ptrs *, char **);
-extern void NF_srv6_segment_ipv6_list(struct channels_list_entry *, struct packet_ptrs *, char **);
+extern void NF_srv6_segment_ipv6_list_handler(struct channels_list_entry *, struct packet_ptrs *, char **);
 extern void NF_mpls_vpn_id_handler(struct channels_list_entry *, struct packet_ptrs *, char **);
 extern void NF_mpls_vpn_rd_handler(struct channels_list_entry *, struct packet_ptrs *, char **);
 extern void NF_mpls_pw_id_handler(struct channels_list_entry *, struct packet_ptrs *, char **);
+extern void NF_path_delay_avg_usec_handler(struct channels_list_entry *, struct packet_ptrs *, char **);
+extern void NF_path_delay_min_usec_handler(struct channels_list_entry *, struct packet_ptrs *, char **);
+extern void NF_path_delay_max_usec_handler(struct channels_list_entry *, struct packet_ptrs *, char **);
 extern void NF_vxlan_handler(struct channels_list_entry *, struct packet_ptrs *, char **);
 extern void NF_timestamp_start_handler(struct channels_list_entry *, struct packet_ptrs *, char **);
 extern void NF_timestamp_end_handler(struct channels_list_entry *, struct packet_ptrs *, char **);
 extern void NF_timestamp_arrival_handler(struct channels_list_entry *, struct packet_ptrs *, char **);
 extern void NF_timestamp_export_handler(struct channels_list_entry *, struct packet_ptrs *, char **);
 extern void NF_sequence_number_handler(struct channels_list_entry *, struct packet_ptrs *, char **);
+extern void NF_tunnel_src_host_handler(struct channels_list_entry *, struct packet_ptrs *, char **);
+extern void NF_tunnel_dst_host_handler(struct channels_list_entry *, struct packet_ptrs *, char **);
+extern void NF_tunnel_src_port_handler(struct channels_list_entry *, struct packet_ptrs *, char **);
+extern void NF_tunnel_dst_port_handler(struct channels_list_entry *, struct packet_ptrs *, char **);
+extern void NF_tunnel_tcp_flags_handler(struct channels_list_entry *, struct packet_ptrs *, char **);
+extern void NF_tunnel_ip_tos_handler(struct channels_list_entry *, struct packet_ptrs *, char **);
+extern void NF_tunnel_ip_proto_handler(struct channels_list_entry *, struct packet_ptrs *, char **);
+extern void NF_tunnel_flow_label_handler(struct channels_list_entry *, struct packet_ptrs *, char **);
 extern void NF_version_handler(struct channels_list_entry *, struct packet_ptrs *, char **);
 extern void NF_sysid_handler(struct channels_list_entry *, struct packet_ptrs *, char **);
 extern void NF_custom_primitives_handler(struct channels_list_entry *, struct packet_ptrs *, char **);

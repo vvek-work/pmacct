@@ -1,6 +1,6 @@
 /*  
     pmacct (Promiscuous mode IP Accounting package)
-    pmacct is Copyright (C) 2003-2022 by Paolo Lucente
+    pmacct is Copyright (C) 2003-2023 by Paolo Lucente
 */
 
 /*
@@ -164,7 +164,8 @@ void print_ex_options_error()
   exit(1);
 }
 
-void write_stats_header_formatted(pm_cfgreg_t what_to_count, pm_cfgreg_t what_to_count_2, u_int8_t have_wtc, int is_event)
+void write_stats_header_formatted(pm_cfgreg_t what_to_count, pm_cfgreg_t what_to_count_2, pm_cfgreg_t what_to_count_3,
+				  u_int8_t have_wtc, int is_event)
 {
   if (!have_wtc) {
     printf("TAG         ");
@@ -244,9 +245,14 @@ void write_stats_header_formatted(pm_cfgreg_t what_to_count, pm_cfgreg_t what_to
     printf("TIMESTAMP_END                  ");
     printf("TIMESTAMP_ARRIVAL              ");
     printf("TIMESTAMP_EXPORT               ");
+
     printf("EXPORT_PROTO_SEQNO  ");
     printf("EXPORT_PROTO_VERSION  ");
     printf("EXPORT_PROTO_SYSID  ");
+
+    printf("PATH_DELAY_AVG_USEC  ");
+    printf("PATH_DELAY_MIN_USEC  ");
+    printf("PATH_DELAY_MAX_USEC  ");
 
     /* all custom primitives printed here */
     {
@@ -366,6 +372,10 @@ void write_stats_header_formatted(pm_cfgreg_t what_to_count, pm_cfgreg_t what_to
     if (what_to_count_2 & COUNT_EXPORT_PROTO_VERSION) printf("EXPORT_PROTO_VERSION  "); 
     if (what_to_count_2 & COUNT_EXPORT_PROTO_SYSID) printf("EXPORT_PROTO_SYSID  "); 
 
+    if (what_to_count_2 & COUNT_PATH_DELAY_AVG_USEC) printf("PATH_DELAY_AVG_USEC  "); 
+    if (what_to_count_2 & COUNT_PATH_DELAY_MIN_USEC) printf("PATH_DELAY_MIN_USEC  "); 
+    if (what_to_count_2 & COUNT_PATH_DELAY_MAX_USEC) printf("PATH_DELAY_MAX_USEC  "); 
+
     /* all custom primitives printed here */
     {
       char cp_str[SRVBUFLEN];
@@ -386,7 +396,8 @@ void write_stats_header_formatted(pm_cfgreg_t what_to_count, pm_cfgreg_t what_to
   }
 }
 
-void write_stats_header_csv(pm_cfgreg_t what_to_count, pm_cfgreg_t what_to_count_2, u_int8_t have_wtc, char *sep, int is_event)
+void write_stats_header_csv(pm_cfgreg_t what_to_count, pm_cfgreg_t what_to_count_2, pm_cfgreg_t what_to_count_3,
+			    u_int8_t have_wtc, char *sep, int is_event)
 {
   int count = 0;
 
@@ -468,6 +479,9 @@ void write_stats_header_csv(pm_cfgreg_t what_to_count, pm_cfgreg_t what_to_count
     printf("%sEXPORT_PROTO_SEQNO", write_sep(sep, &count));
     printf("%sEXPORT_PROTO_VERSION", write_sep(sep, &count));
     printf("%sEXPORT_PROTO_SYSID", write_sep(sep, &count));
+    printf("%sPATH_DELAY_AVG_USEC", write_sep(sep, &count));
+    printf("%sPATH_DELAY_MIN_USEC", write_sep(sep, &count));
+    printf("%sPATH_DELAY_MAX_USEC", write_sep(sep, &count));
     /* all custom primitives printed here */
     {
       char cp_str[SRVBUFLEN];
@@ -586,6 +600,10 @@ void write_stats_header_csv(pm_cfgreg_t what_to_count, pm_cfgreg_t what_to_count
     if (what_to_count_2 & COUNT_EXPORT_PROTO_VERSION) printf("%sEXPORT_PROTO_VERSION", write_sep(sep, &count));
     if (what_to_count_2 & COUNT_EXPORT_PROTO_SYSID) printf("%sEXPORT_PROTO_SYSID", write_sep(sep, &count));
 
+    if (what_to_count_2 & COUNT_PATH_DELAY_AVG_USEC) printf("%sPATH_DELAY_AVG_USEC", write_sep(sep, &count));
+    if (what_to_count_2 & COUNT_PATH_DELAY_MIN_USEC) printf("%sPATH_DELAY_MIN_USEC", write_sep(sep, &count));
+    if (what_to_count_2 & COUNT_PATH_DELAY_MAX_USEC) printf("%sPATH_DELAY_MAX_USEC", write_sep(sep, &count));
+
     /* all custom primitives printed here */
     {
       char cp_str[SRVBUFLEN];
@@ -697,7 +715,7 @@ int main(int argc,char **argv)
   int which_counter, topN_counter, fetch_from_file, sum_counters, num_counters;
   int topN_howmany, topN_printed;
   int datasize;
-  pm_cfgreg_t what_to_count, what_to_count_2, have_wtc;
+  pm_cfgreg_t what_to_count, what_to_count_2, what_to_count_3, have_wtc;
   u_int32_t tmpnum;
   struct extra_primitives extras;
   char *topN_howmany_ptr, *endptr;
@@ -743,6 +761,7 @@ int main(int argc,char **argv)
   fetch_from_file = FALSE;
   what_to_count = FALSE;
   what_to_count_2 = FALSE;
+  what_to_count_3 = FALSE;
   have_wtc = FALSE;
   want_output = PRINT_OUTPUT_FORMATTED;
   is_event = FALSE;
@@ -1078,6 +1097,18 @@ int main(int argc,char **argv)
           count_token_int[count_index] = COUNT_INT_EXPORT_PROTO_SYSID;
           what_to_count_2 |= COUNT_EXPORT_PROTO_SYSID;
 	}
+        else if (!strcmp(count_token[count_index], "path_delay_avg_usec")) {
+          count_token_int[count_index] = COUNT_INT_PATH_DELAY_AVG_USEC;
+          what_to_count_2 |= COUNT_PATH_DELAY_AVG_USEC;
+	}
+        else if (!strcmp(count_token[count_index], "path_delay_min_usec")) {
+          count_token_int[count_index] = COUNT_INT_PATH_DELAY_MIN_USEC;
+          what_to_count_2 |= COUNT_PATH_DELAY_MIN_USEC;
+	}
+        else if (!strcmp(count_token[count_index], "path_delay_max_usec")) {
+          count_token_int[count_index] = COUNT_INT_PATH_DELAY_MAX_USEC;
+          what_to_count_2 |= COUNT_PATH_DELAY_MAX_USEC;
+	}
         else if (!strcmp(count_token[count_index], "label")) {
           count_token_int[count_index] = COUNT_INT_LABEL;
           what_to_count_2 |= COUNT_LABEL;
@@ -1306,7 +1337,7 @@ int main(int argc,char **argv)
     exit(1);
   }
 
-  if ((want_counter || want_match) && (!what_to_count && !what_to_count_2)) {
+  if ((want_counter || want_match) && (!what_to_count && !what_to_count_2 && !what_to_count_3)) {
     printf("ERROR: -N or -M selected but -c has not been specified or is invalid.\n  Exiting...\n\n");
     usage_client(argv[0]);
     exit(1);
@@ -1452,9 +1483,13 @@ int main(int argc,char **argv)
     for (q.num = 0; (q.num < strnum) && (q.num < MAX_QUERIES); q.num++) {
       match_string_ptr = strings[q.num];
       match_string_index = 0;
+
       memset(&request, 0, sizeof(struct query_entry));
+
       request.what_to_count = what_to_count;
       request.what_to_count_2 = what_to_count_2;
+      request.what_to_count_3 = what_to_count_3;
+
       while ((*match_string_ptr != '\0') && (match_string_index < count_index))  {
         match_string_token = pmc_extract_token(&match_string_ptr, ',');
 
@@ -2122,8 +2157,11 @@ int main(int argc,char **argv)
 
     if (want_all_fields) have_wtc = FALSE; 
     else have_wtc = TRUE; 
+
     what_to_count = ((struct query_header *)largebuf)->what_to_count;
     what_to_count_2 = ((struct query_header *)largebuf)->what_to_count_2;
+    what_to_count_3 = ((struct query_header *)largebuf)->what_to_count_3;
+
     datasize = ((struct query_header *)largebuf)->datasize;
     memcpy(&extras, &((struct query_header *)largebuf)->extras, sizeof(struct extra_primitives));
     if (check_data_sizes((struct query_header *)largebuf, acc_elem)) exit(1);
@@ -2163,10 +2201,12 @@ int main(int argc,char **argv)
       }
     }
 
-    if (want_output & PRINT_OUTPUT_FORMATTED)
-      write_stats_header_formatted(what_to_count, what_to_count_2, have_wtc, is_event);
-    else if (want_output & PRINT_OUTPUT_CSV)
-      write_stats_header_csv(what_to_count, what_to_count_2, have_wtc, sep_ptr, is_event);
+    if (want_output & PRINT_OUTPUT_FORMATTED) {
+      write_stats_header_formatted(what_to_count, what_to_count_2, what_to_count_3, have_wtc, is_event);
+    }
+    else if (want_output & PRINT_OUTPUT_CSV) {
+      write_stats_header_csv(what_to_count, what_to_count_2, what_to_count_3, have_wtc, sep_ptr, is_event);
+    }
 
     elem = largebuf+sizeof(struct query_header);
     unpacked -= sizeof(struct query_header);
@@ -2848,6 +2888,21 @@ int main(int argc,char **argv)
         if (!have_wtc || (what_to_count_2 & COUNT_EXPORT_PROTO_SYSID)) {
           if (want_output & PRINT_OUTPUT_FORMATTED) printf("%-18u  ", acc_elem->primitives.export_proto_sysid);
           else if (want_output & PRINT_OUTPUT_CSV) printf("%s%u", write_sep(sep_ptr, &count), acc_elem->primitives.export_proto_sysid);
+        }
+
+        if (!have_wtc || (what_to_count_2 & COUNT_PATH_DELAY_AVG_USEC)) {
+          if (want_output & PRINT_OUTPUT_FORMATTED) printf("%-19u  ", pmpls->path_delay_avg_usec);
+          else if (want_output & PRINT_OUTPUT_CSV) printf("%s%u", write_sep(sep_ptr, &count), pmpls->path_delay_avg_usec);
+        }
+
+        if (!have_wtc || (what_to_count_2 & COUNT_PATH_DELAY_MIN_USEC)) {
+          if (want_output & PRINT_OUTPUT_FORMATTED) printf("%-19u  ", pmpls->path_delay_min_usec);
+          else if (want_output & PRINT_OUTPUT_CSV) printf("%s%u", write_sep(sep_ptr, &count), pmpls->path_delay_min_usec);
+        }
+
+        if (!have_wtc || (what_to_count_2 & COUNT_PATH_DELAY_MAX_USEC)) {
+          if (want_output & PRINT_OUTPUT_FORMATTED) printf("%-19u  ", pmpls->path_delay_max_usec);
+          else if (want_output & PRINT_OUTPUT_CSV) printf("%s%u", write_sep(sep_ptr, &count), pmpls->path_delay_max_usec);
         }
 
         /* all custom primitives printed here */
@@ -3737,6 +3792,12 @@ char *pmc_compose_json(u_int64_t wtc, u_int64_t wtc_2, u_int8_t flow_type, struc
   if (wtc_2 & COUNT_EXPORT_PROTO_VERSION) json_object_set_new_nocheck(obj, "export_proto_version", json_integer((json_int_t)pbase->export_proto_version));
 
   if (wtc_2 & COUNT_EXPORT_PROTO_SYSID) json_object_set_new_nocheck(obj, "export_proto_sysid", json_integer((json_int_t)pbase->export_proto_sysid));
+
+  if (wtc_2 & COUNT_PATH_DELAY_AVG_USEC) json_object_set_new_nocheck(obj, "path_delay_avg_usec", json_integer((json_int_t)pmpls->path_delay_avg_usec));
+
+  if (wtc_2 & COUNT_PATH_DELAY_MIN_USEC) json_object_set_new_nocheck(obj, "path_delay_min_usec", json_integer((json_int_t)pmpls->path_delay_min_usec));
+
+  if (wtc_2 & COUNT_PATH_DELAY_MAX_USEC) json_object_set_new_nocheck(obj, "path_delay_max_usec", json_integer((json_int_t)pmpls->path_delay_max_usec));
 
   /* all custom primitives printed here */
   {

@@ -1,6 +1,6 @@
 /*
     pmacct (Promiscuous mode IP Accounting package)
-    pmacct is Copyright (C) 2003-2022 by Paolo Lucente
+    pmacct is Copyright (C) 2003-2023 by Paolo Lucente
 */
 
 /*
@@ -39,7 +39,7 @@ avro_schema_t p_avro_acct_schema, p_avro_acct_init_schema, p_avro_acct_close_sch
 avro_schema_t sc_type_array, sc_type_map, sc_type_string, sc_type_union;
 
 /* functions */
-avro_schema_t p_avro_schema_build_acct_data(u_int64_t wtc, u_int64_t wtc_2)
+avro_schema_t p_avro_schema_build_acct_data(u_int64_t wtc, u_int64_t wtc_2, u_int64_t wtc_3)
 {
   avro_schema_t schema = avro_schema_record("acct_data", NULL);
   avro_schema_t optlong_s = avro_schema_union();
@@ -262,6 +262,9 @@ avro_schema_t p_avro_schema_build_acct_data(u_int64_t wtc, u_int64_t wtc_2)
   if (wtc & COUNT_IP_TOS)
     avro_schema_record_field_append(schema, "tos", avro_schema_long());
 
+  if (wtc_3 & COUNT_FLOW_LABEL)
+    avro_schema_record_field_append(schema, "flow_label", avro_schema_int());
+
   if (wtc_2 & COUNT_SAMPLING_RATE)
     avro_schema_record_field_append(schema, "sampling_rate", avro_schema_long());
 
@@ -292,6 +295,15 @@ avro_schema_t p_avro_schema_build_acct_data(u_int64_t wtc, u_int64_t wtc_2)
   if (wtc_2 & COUNT_MPLS_LABEL_BOTTOM)
     avro_schema_record_field_append(schema, "mpls_label_bottom", avro_schema_long());
 
+  if (wtc_2 & COUNT_PATH_DELAY_AVG_USEC)
+    avro_schema_record_field_append(schema, "path_delay_avg_usec", avro_schema_long());
+
+  if (wtc_2 & COUNT_PATH_DELAY_MIN_USEC)
+    avro_schema_record_field_append(schema, "path_delay_min_usec", avro_schema_long());
+
+  if (wtc_2 & COUNT_PATH_DELAY_MAX_USEC)
+    avro_schema_record_field_append(schema, "path_delay_max_usec", avro_schema_long());
+
   if (wtc_2 & COUNT_TUNNEL_SRC_MAC)
     avro_schema_record_field_append(schema, "tunnel_mac_src", avro_schema_string());
 
@@ -310,13 +322,16 @@ avro_schema_t p_avro_schema_build_acct_data(u_int64_t wtc, u_int64_t wtc_2)
   if (wtc_2 & COUNT_TUNNEL_IP_TOS)
     avro_schema_record_field_append(schema, "tunnel_tos", avro_schema_long());
 
+  if (wtc_3 & COUNT_TUNNEL_FLOW_LABEL)
+    avro_schema_record_field_append(schema, "tunnel_flow_label", avro_schema_int());
+
   if (wtc_2 & COUNT_TUNNEL_SRC_PORT)
     avro_schema_record_field_append(schema, "tunnel_port_src", avro_schema_long());
 
   if (wtc_2 & COUNT_TUNNEL_DST_PORT)
     avro_schema_record_field_append(schema, "tunnel_port_dst", avro_schema_long());
 
-  if (wtc & COUNT_TUNNEL_TCPFLAGS) {
+  if (wtc_2 & COUNT_TUNNEL_TCPFLAGS) {
     if (config.tcpflags_encode_as_array) {
       compose_tunnel_tcpflags_avro_schema(schema);
     }
@@ -452,11 +467,12 @@ avro_value_t compose_avro_acct_close(char *writer_name, pid_t writer_pid, int pu
   return value;
 }
 
-avro_value_t compose_avro_acct_data(u_int64_t wtc, u_int64_t wtc_2, u_int8_t flow_type, struct pkt_primitives *pbase,
-  struct pkt_bgp_primitives *pbgp, struct pkt_nat_primitives *pnat, struct pkt_mpls_primitives *pmpls,
-  struct pkt_tunnel_primitives *ptun, u_char *pcust, struct pkt_vlen_hdr_primitives *pvlen,
-  pm_counter_t bytes_counter, pm_counter_t packet_counter, pm_counter_t flow_counter, u_int8_t tcp_flags,
-  u_int8_t tunnel_tcp_flags, struct timeval *basetime, struct pkt_stitching *stitch, avro_value_iface_t *iface)
+avro_value_t compose_avro_acct_data(u_int64_t wtc, u_int64_t wtc_2, u_int64_t wtc_3, u_int8_t flow_type,
+  struct pkt_primitives *pbase, struct pkt_bgp_primitives *pbgp, struct pkt_nat_primitives *pnat,
+  struct pkt_mpls_primitives *pmpls, struct pkt_tunnel_primitives *ptun, u_char *pcust,
+  struct pkt_vlen_hdr_primitives *pvlen, pm_counter_t bytes_counter, pm_counter_t packet_counter,
+  pm_counter_t flow_counter, u_int8_t tcp_flags, u_int8_t tunnel_tcp_flags, struct timeval *basetime,
+  struct pkt_stitching *stitch, avro_value_iface_t *iface)
 {
   char src_mac[18], dst_mac[18], src_host[INET6_ADDRSTRLEN], dst_host[INET6_ADDRSTRLEN], ip_address[INET6_ADDRSTRLEN];
   char rd_str[SRVBUFLEN], misc_str[SRVBUFLEN], *as_path, *bgp_comm, empty_string[] = "", *str_ptr;
@@ -927,6 +943,11 @@ avro_value_t compose_avro_acct_data(u_int64_t wtc, u_int64_t wtc_2, u_int8_t flo
     pm_avro_check(avro_value_set_long(&field, pbase->tos));
   }
 
+  if (wtc_3 & COUNT_FLOW_LABEL) {
+    pm_avro_check(avro_value_get_by_name(&value, "flow_label", &field, NULL));
+    pm_avro_check(avro_value_set_int(&field, pbase->flow_label));
+  }
+
   if (wtc_2 & COUNT_SAMPLING_RATE) {
     pm_avro_check(avro_value_get_by_name(&value, "sampling_rate", &field, NULL));
     pm_avro_check(avro_value_set_long(&field, pbase->sampling_rate));
@@ -979,6 +1000,21 @@ avro_value_t compose_avro_acct_data(u_int64_t wtc, u_int64_t wtc_2, u_int8_t flo
     pm_avro_check(avro_value_set_long(&field, pmpls->mpls_label_bottom));
   }
 
+  if (wtc_2 & COUNT_PATH_DELAY_AVG_USEC) {
+    pm_avro_check(avro_value_get_by_name(&value, "path_delay_avg_usec", &field, NULL));
+    pm_avro_check(avro_value_set_long(&field, pmpls->path_delay_avg_usec));
+  }
+
+  if (wtc_2 & COUNT_PATH_DELAY_MIN_USEC) {
+    pm_avro_check(avro_value_get_by_name(&value, "path_delay_min_usec", &field, NULL));
+    pm_avro_check(avro_value_set_long(&field, pmpls->path_delay_min_usec));
+  }
+
+  if (wtc_2 & COUNT_PATH_DELAY_MAX_USEC) {
+    pm_avro_check(avro_value_get_by_name(&value, "path_delay_max_usec", &field, NULL));
+    pm_avro_check(avro_value_set_long(&field, pmpls->path_delay_max_usec));
+  }
+
   if (wtc_2 & COUNT_TUNNEL_SRC_MAC) {
     etheraddr_string(ptun->tunnel_eth_shost, src_mac);
     pm_avro_check(avro_value_get_by_name(&value, "tunnel_mac_src", &field, NULL));
@@ -1015,6 +1051,11 @@ avro_value_t compose_avro_acct_data(u_int64_t wtc, u_int64_t wtc_2, u_int8_t flo
     pm_avro_check(avro_value_set_long(&field, ptun->tunnel_tos));
   }
 
+  if (wtc_3 & COUNT_TUNNEL_FLOW_LABEL) {
+    pm_avro_check(avro_value_get_by_name(&value, "tunnel_flow_label", &field, NULL));
+    pm_avro_check(avro_value_set_int(&field, ptun->tunnel_flow_label));
+  }
+
   if (wtc_2 & COUNT_TUNNEL_SRC_PORT) {
     pm_avro_check(avro_value_get_by_name(&value, "tunnel_port_src", &field, NULL));
     pm_avro_check(avro_value_set_long(&field, ptun->tunnel_src_port));
@@ -1025,7 +1066,7 @@ avro_value_t compose_avro_acct_data(u_int64_t wtc, u_int64_t wtc_2, u_int8_t flo
     pm_avro_check(avro_value_set_long(&field, ptun->tunnel_dst_port));
   }
 
-  if (wtc & COUNT_TUNNEL_TCPFLAGS) {
+  if (wtc_2 & COUNT_TUNNEL_TCPFLAGS) {
     sprintf(misc_str, "%u", tunnel_tcp_flags);
 
     if (config.tcpflags_encode_as_array) {

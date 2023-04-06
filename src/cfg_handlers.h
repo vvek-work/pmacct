@@ -1,6 +1,6 @@
 /*
     pmacct (Promiscuous mode IP Accounting package)
-    pmacct is Copyright (C) 2003-2022 by Paolo Lucente
+    pmacct is Copyright (C) 2003-2023 by Paolo Lucente
 */
 
 /*
@@ -222,12 +222,8 @@ extern int cfg_key_telemetry_udp_notif_interface(char *, char *, char *);
 extern int cfg_key_telemetry_udp_notif_ipv6_only(char *, char *, char *);
 extern int cfg_key_telemetry_udp_notif_nmsgs(char *, char *, char *);
 extern int cfg_key_telemetry_udp_notif_rp_ebpf_prog(char *, char *, char *);
+extern int cfg_key_telemetry_grpc_collector_conf(char *, char *, char *);
 extern int cfg_key_telemetry_ipv6_only(char *, char *, char *);
-extern int cfg_key_telemetry_zmq_address(char *, char *, char *);
-extern int cfg_key_telemetry_kafka_broker_host(char *, char *, char *);
-extern int cfg_key_telemetry_kafka_broker_port(char *, char *, char *);
-extern int cfg_key_telemetry_kafka_topic(char *, char *, char *);
-extern int cfg_key_telemetry_kafka_config_file(char *, char *, char *);
 extern int cfg_key_telemetry_decoder(char *, char *, char *);
 extern int cfg_key_telemetry_max_peers(char *, char *, char *);
 extern int cfg_key_telemetry_peer_timeout(char *, char *, char *);
@@ -286,6 +282,7 @@ extern int cfg_key_maps_index(char *, char *, char *);
 extern int cfg_key_maps_entries(char *, char *, char *);
 extern int cfg_key_maps_row_len(char *, char *, char *);
 extern int cfg_key_pre_tag_map(char *, char *, char *);
+extern int cfg_key_pre_tag_map_dont_recirculate(char *, char *, char *);
 extern int cfg_key_pre_tag_filter(char *, char *, char *);
 extern int cfg_key_pre_tag2_filter(char *, char *, char *);
 extern int cfg_key_pre_tag_label_filter(char *, char *, char *);
@@ -531,7 +528,7 @@ extern int cfg_key_tmp_bgp_daemon_route_refresh(char *, char *, char *);
 extern int cfg_key_tmp_bgp_daemon_origin_type_int(char *, char *, char *);
 extern int cfg_key_tmp_telemetry_daemon_udp_notif_legacy(char *, char *, char *);
 extern int cfg_key_tmp_telemetry_decode_cisco_v1_json_string(char *, char *, char *);
-extern int cfg_key_tmp_bmp_daemon_ha(char *, char *, char *);
+extern int cfg_key_bgp_bmp_daemon_ha(char *, char *, char *);
 
 extern void parse_time(char *, char *, int *, int *);
 extern void cfg_get_primitive_index_value(u_int64_t, u_int64_t *, u_int64_t *);

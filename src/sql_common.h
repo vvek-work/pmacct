@@ -1,6 +1,6 @@
 /*
     pmacct (Promiscuous mode IP Accounting package)
-    pmacct is Copyright (C) 2003-2022 by Paolo Lucente
+    pmacct is Copyright (C) 2003-2023 by Paolo Lucente
 */
 
 /*
@@ -246,9 +246,13 @@ extern void count_post_nat_dst_port_handler(const struct db_cache *, struct inse
 extern void count_nat_event_handler(const struct db_cache *, struct insert_data *, int, char **, char **);
 extern void count_fw_event_handler(const struct db_cache *, struct insert_data *, int, char **, char **);
 extern void count_fwd_status_handler(const struct db_cache *, struct insert_data *, int, char **, char **);
+extern void count_flow_label_handler(const struct db_cache *, struct insert_data *, int, char **, char **);
 extern void count_mpls_label_top_handler(const struct db_cache *, struct insert_data *, int, char **, char **);
 extern void count_mpls_label_bottom_handler(const struct db_cache *, struct insert_data *, int, char **, char **);
 extern void count_mpls_label_stack_handler(const struct db_cache *, struct insert_data *, int, char **, char **);
+extern void count_path_delay_avg_usec_handler(const struct db_cache *, struct insert_data *, int, char **, char **);
+extern void count_path_delay_min_usec_handler(const struct db_cache *, struct insert_data *, int, char **, char **);
+extern void count_path_delay_max_usec_handler(const struct db_cache *, struct insert_data *, int, char **, char **);
 extern void count_tunnel_src_mac_handler(const struct db_cache *, struct insert_data *, int, char **, char **);
 extern void count_tunnel_dst_mac_handler(const struct db_cache *, struct insert_data *, int, char **, char **);
 extern void count_tunnel_src_ip_handler(const struct db_cache *, struct insert_data *, int, char **, char **);
@@ -259,6 +263,7 @@ extern void count_tunnel_ip_tos_handler(const struct db_cache *, struct insert_d
 extern void count_tunnel_src_port_handler(const struct db_cache *, struct insert_data *, int, char **, char **);
 extern void count_tunnel_dst_port_handler(const struct db_cache *, struct insert_data *, int, char **, char **);
 extern void count_tunnel_tcpflags_handler(const struct db_cache *, struct insert_data *, int, char **, char **);
+extern void count_tunnel_flow_label_handler(const struct db_cache *, struct insert_data *, int, char **, char **);
 extern void count_vxlan_handler(const struct db_cache *, struct insert_data *, int, char **, char **);
 extern void count_timestamp_start_handler(const struct db_cache *, struct insert_data *, int, char **, char **);
 extern void PG_copy_count_timestamp_start_handler(const struct db_cache *, struct insert_data *, int, char **, char **);
