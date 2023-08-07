@@ -402,6 +402,17 @@ void P_cache_purge(struct chained_cache *queue[], int index, int safe_action)
   struct primitives_ptrs prim_ptrs, elem_prim_ptrs;
   struct pkt_data dummy_data, elem_dummy_data;
   pid_t writer_pid = getpid();
+
+  void *context = zmq_ctx_new();
+  int linger = 0;
+  int timeout = 0;
+  int watermark = 500000;
+  void *requester = zmq_socket(context, ZMQ_PUSH);
+  zmq_setsockopt(requester, ZMQ_LINGER, &linger, sizeof(linger));
+  zmq_setsockopt(requester, ZMQ_SNDTIMEO, &timeout, sizeof(timeout));
+  zmq_setsockopt(requester, ZMQ_SNDHWM, &watermark, sizeof(watermark));
+  zmq_connect(requester, config.zmq_address);
+
 #ifdef WITH_AVRO
   avro_file_writer_t p_avro_writer;
 #endif
@@ -1323,7 +1334,30 @@ void P_cache_purge(struct chained_cache *queue[], int index, int safe_action)
 	int idx;
 
 	for (idx = 0; idx < N_PRIMITIVES && cjhandler[idx]; idx++) cjhandler[idx](json_obj, queue[j]);
-        if (json_obj) write_and_free_json(f, json_obj);
+
+    if (json_obj)
+    {
+        json_object_set_new(json_obj, "flow_type", json_string(config.name));
+        json_object_del(json_obj,"event_type");
+        json_object_del(json_obj,"stamp_updated");
+        json_object_del(json_obj,"stamp_inserted");
+
+        char *json = NULL;
+        json = json_dumps(json_obj, JSON_PRESERVE_ORDER);
+        json_decref(json_obj);
+
+        if (json)
+        {
+            char *buffer;
+            asprintf(&buffer, "flow %s", json);
+            free(json);
+            if (buffer)
+            {
+                zmq_send(requester, buffer, strlen(buffer), ZMQ_NOBLOCK);
+                free(buffer);
+            }
+        }
+    }
 #endif
       }
       else if (f &&
@@ -1379,7 +1413,31 @@ void P_cache_purge(struct chained_cache *queue[], int index, int safe_action)
       void *json_obj;
 
       json_obj = compose_purge_close_json(config.name, writer_pid, qn, saved_index, duration);
-      if (json_obj) write_and_free_json(f, json_obj);
+
+//  not being executed.
+    if (json_obj)
+    {
+        json_object_set_new(json_obj, "flow_type", json_string(config.name));
+        json_object_del(json_obj,"event_type");
+        json_object_del(json_obj,"stamp_updated");
+        json_object_del(json_obj,"stamp_inserted");
+
+        char *json = NULL;
+        json = json_dumps(json_obj, JSON_PRESERVE_ORDER);
+        json_decref(json_obj);
+
+        if (json)
+        {
+            char *buffer;
+            asprintf(&buffer, "flow %s", json);
+            free(json);
+            if (buffer)
+            {
+                zmq_send(requester, buffer, strlen(buffer), ZMQ_NOBLOCK);
+                free(buffer);
+            }
+        }
+    }
 #endif
     }
   }
@@ -1438,6 +1496,11 @@ void P_cache_purge(struct chained_cache *queue[], int index, int safe_action)
   if (config.sql_trigger_exec && !safe_action) P_trigger_exec(config.sql_trigger_exec); 
 
   if (empty_pcust) free(empty_pcust);
+
+  if (context != NULL) {
+      zmq_close(requester);
+      zmq_ctx_destroy(context);
+  }
 }
 
 void P_write_stats_header_formatted(FILE *f, int is_event)

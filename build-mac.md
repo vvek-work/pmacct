@@ -19,3 +19,9 @@
 > make
  
 > sudo make install
+
+> src/pmacctd
+> 
+> src/nfacctd
+> 
+> src/sfacctd

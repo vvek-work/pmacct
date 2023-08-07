@@ -17,6 +17,8 @@ COMPILE_ARGS="${ac_configure_args}"
 dnl Checks for programs.
 AC_PROG_CC
 
+AC_PROG_CC_STDC
+
 dnl pkg-config stuff
 PKG_CONFIG_PATH=${PKG_CONFIG_PATH}:/usr/local/lib/pkgconfig
 export PKG_CONFIG_PATH

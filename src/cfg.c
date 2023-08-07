@@ -30,6 +30,7 @@ static const struct _dictionary_line dictionary[] = {
   {"debug_internal_msg", cfg_key_debug_internal_msg},
   {"syslog", cfg_key_syslog},
   {"logfile", cfg_key_logfile},
+  {"loglevel", cfg_key_logLevel},
   {"pidfile", cfg_key_pidfile},
   {"daemonize", cfg_key_daemonize},
   {"aggregate", cfg_key_aggregate},
@@ -178,6 +179,7 @@ static const struct _dictionary_line dictionary[] = {
   {"amqp_history_roundoff", cfg_key_sql_history_roundoff},
   {"amqp_time_roundoff", cfg_key_sql_history_roundoff},
   {"amqp_host", cfg_key_sql_host},
+  {"zmq_address", cfg_key_zmq_address},
   {"amqp_user", cfg_key_sql_user},
   {"amqp_passwd", cfg_key_sql_passwd},
   {"amqp_exchange", cfg_key_sql_db},
@@ -1116,6 +1118,7 @@ void set_default_values()
   while (list) {
     list->cfg.promisc = TRUE;
     list->cfg.maps_refresh = TRUE;
+    list->cfg.loglevel = LOG_DEBUG;
 
     list = list->next;
   }
